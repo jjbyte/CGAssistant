@@ -278,16 +278,16 @@ void CProcessWorker::OnQueueQueryProcess()
                 CProcessItemPtr item(new CProcessItem((quint32)pid, (quint32)tid, (quint32)hWnd, szText, attached));
                 list.append(item);
 
-                if(!attached && m_AutoAttachPID == pid && m_AutoAttachTID == tid){
-
+                //if(!attached && m_AutoAttachPID == pid && m_AutoAttachTID == tid){
+                if(m_AutoAttachPID == pid && m_AutoAttachTID == tid) {
                     //qDebug("OnQueueAttachProcess %d %d", (quint32)pid, (quint32)tid);
 
                     OnQueueAttachProcess( (quint32)pid, (quint32)tid, (quint32)hWnd, QString("cgahook.dll") );
 
                     m_AutoAttachPID = 0;
                     m_AutoAttachTID = 0;
+                    continue;
                 }
-
                 if(attached)
                 {
                     int port = 0;
@@ -305,7 +305,6 @@ void CProcessWorker::OnQueueQueryProcess()
                         }
                     }
                 }
-
             }
         }
     }

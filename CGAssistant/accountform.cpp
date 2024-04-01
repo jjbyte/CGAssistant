@@ -36,6 +36,8 @@ AccountForm::AccountForm(QWidget *parent) :
     m_glt_lock = NULL;
     m_glt_map = NULL;
 
+    m_first_login = true;
+
     m_POLCN = new QProcess();
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     m_POLCN->setProcessEnvironment(env);
@@ -147,7 +149,7 @@ bool AccountForm::IsGltExpired()
         }
         ReleaseMutex(m_glt_lock);
     }
-
+    //判断是否需要刷新子账号
     if(0 != glt.compare(m_glt))
         return true;
 
@@ -173,6 +175,7 @@ void AccountForm::OnAutoLogin()
 
     if(!ui->checkBox_autoLogin->isChecked())
     {
+        //取消自动登录
         if(g_CGAInterface->IsConnected()){
             g_CGAInterface->LoginGameServer("", "", -1, -1, -1, -1);
         }
@@ -214,6 +217,7 @@ void AccountForm::OnAutoLogin()
             }
 
             NotifyLoginProgressEnd();
+            m_first_login = true;
             return;
         }
 
@@ -230,9 +234,10 @@ void AccountForm::OnAutoLogin()
                 }
                 else
                 {
-                    if(!m_logingame.isValid() || m_logingame.elapsed() > ui->horizontalSlider_loginDuration->value() * 1000)
+                    if(m_first_login || !m_logingame.isValid()  || m_logingame.elapsed() >= ui->horizontalSlider_loginDuration->value() * 1000)
                     {
                         on_pushButton_logingame_clicked();
+                        m_first_login = false;
                     }
                     return;
                 }
@@ -408,9 +413,7 @@ bool AccountForm::QueryAccount(QString &label, QString &errorMsg)
             CloseHandle(m_polcn_lock);
             m_polcn_lock = NULL;
             return false;
-        }
-        else if(!m_polcn_lock)
-        {
+        } else if(!m_polcn_lock) {
             //qDebug("lock2");
 
             label = tr("Failed to acquire POLCN login lock...");
@@ -541,8 +544,23 @@ void AccountForm::OnNotifyConnectionState(int state, QString msg)
 
         if(m_login_failure >= 10 && ui->checkBox_autoKillGame->isChecked())
         {
+            //失败次数重置
             m_login_failure = 0;
+            //通知杀掉游戏进程
             NotifyKillProcess();
+            //暂停本程序的自动登录
+            ui->label_status->setText(tr("Auto-Login off."));
+            if(m_polcn_lock)
+            {
+                CloseHandle(m_polcn_lock);
+                m_polcn_lock = NULL;
+            }
+            if(m_polcn_map)
+            {
+                CloseHandle(m_polcn_map);
+                m_polcn_map = NULL;
+            }
+            NotifyLoginProgressEnd();
         }
     }
     else if(state == 1 || state == 2)

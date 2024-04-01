@@ -43,6 +43,8 @@ signals:
     void HttpLoadSettings(QString query, QByteArray postdata, QJsonDocument* doc);
     void HttpLoadScript(QString query, QByteArray postdata, QJsonDocument* doc);
     void HttpLoadAccount(QString query, QByteArray postdata, QJsonDocument* doc);
+    void HttpKillGame();
+    
 private slots:
     void on_tabWidget_currentChanged(int index);
     void OnNotifyGetPlayerInfo(QSharedPointer<CGA_PlayerInfo_t> player);

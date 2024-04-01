@@ -121,6 +121,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, &MainWindow::HttpLoadSettings, playerFrom, &PlayerForm::OnHttpLoadSettings);
     connect(this, &MainWindow::HttpLoadScript, scriptForm, &ScriptForm::OnHttpLoadScript);
     connect(this, &MainWindow::HttpLoadAccount, accountForm, &AccountForm::OnHttpLoadAccount);
+    connect(this, &MainWindow::HttpKillGame, processWorker, &CProcessWorker::OnKillProcess);
 
     m_playerWorkerThread.start();
     m_processWorkerThread.start();

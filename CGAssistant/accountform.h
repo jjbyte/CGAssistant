@@ -61,6 +61,7 @@ private:
     HANDLE m_glt_lock;
     HANDLE m_glt_map;
     int m_login_failure;
+    bool m_first_login;
 };
 
 #endif // ACCOUNTFORM_H

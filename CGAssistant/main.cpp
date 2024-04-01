@@ -204,7 +204,12 @@ int main(int argc, char *argv[])
                            res->setStatusCode(qhttp::ESTATUS_OK);
                            res->end(doc.toJson());
                            return;
-                        }
+                        } else if(0 == subreq.compare("KillGame")) {
+                            w.HttpKillGame();
+                            res->setStatusCode(qhttp::ESTATUS_OK);
+                            res->end("");
+                            return;
+                       }
                     }
                 }
                 else if(req->method() == qhttp::THttpMethod::EHTTP_POST)
@@ -248,6 +253,11 @@ int main(int argc, char *argv[])
                            res->setStatusCode(qhttp::ESTATUS_OK);
                            res->end(doc.toJson());
                            return;
+                       } else if(0 == subreq.compare("KillGame")) {
+                            w.HttpKillGame();
+                            res->setStatusCode(qhttp::ESTATUS_OK);
+                            res->end("");
+                            return;
                        }
                    }
                 }
