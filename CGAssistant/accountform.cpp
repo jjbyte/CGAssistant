@@ -571,7 +571,7 @@ void AccountForm::OnNotifyConnectionState(int state, QString msg)
 
 void AccountForm::OnNotifyFillAutoLogin(int game, QString user, QString pwd, QString gid,
                                         int bigserver, int server, int character,
-                                        bool autologin, bool skipupdate, bool autochangeserver,bool autokillgame,int loginduration,
+                                        bool autologin, bool skipupdate, bool autochangeserver,bool autokillgame,int interval,
                                         bool create_chara, int create_chara_chara, int create_chara_eye, int create_chara_mou, int create_chara_color,
                                         QString create_chara_points, QString create_chara_elements, QString create_chara_name)
 {
@@ -612,10 +612,10 @@ void AccountForm::OnNotifyFillAutoLogin(int game, QString user, QString pwd, QSt
     if(autokillgame)
         ui->checkBox_autoKillGame->setChecked(true);
 
-    if(loginduration >= 0 && loginduration <= 120)
+    if(interval >= 0 && interval <= 120)
     {
-        ui->horizontalSlider_loginDuration->setValue(loginduration);
-        on_horizontalSlider_loginDuration_valueChanged(loginduration);
+        ui->horizontalSlider_loginDuration->setValue(interval);
+        on_horizontalSlider_loginDuration_valueChanged(interval);
     }
 
     if(create_chara)
@@ -744,8 +744,8 @@ void AccountForm::OnHttpLoadAccount(QString query, QByteArray postdata, QJsonDoc
               on_checkBox_createChara_stateChanged(qautocreatechara.toBool() ? 1 : 0);
             }
        }
-       if(newobj.contains("loginduration")){
-           auto qloginduration = newobj.take("loginduration");
+       if(newobj.contains("interval")){
+           auto qloginduration = newobj.take("interval");
 
            int val_loginduration = qloginduration.toInt();
            if(val_loginduration >= 0 && val_loginduration <= 120){
