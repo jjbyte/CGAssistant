@@ -36,8 +36,6 @@ AccountForm::AccountForm(QWidget *parent) :
     m_glt_lock = NULL;
     m_glt_map = NULL;
 
-    m_first_login = true;
-
     m_POLCN = new QProcess();
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     m_POLCN->setProcessEnvironment(env);
@@ -218,6 +216,8 @@ void AccountForm::OnAutoLogin()
 
             NotifyLoginProgressEnd();
             m_first_login = true;
+            //登录成功就重置
+            m_login_failure = 0;
             return;
         }
 
@@ -229,6 +229,7 @@ void AccountForm::OnAutoLogin()
             {
                 if(IsGltExpired())
                 {
+                    m_first_login = true;
                     on_pushButton_getgid_clicked();
                     return;
                 }
@@ -246,6 +247,7 @@ void AccountForm::OnAutoLogin()
     }
     else if(!m_game_pid || !IsProcessThreadPresent(m_game_pid, m_game_tid))
     {
+        m_first_login = true;
         on_pushButton_getgid_clicked();
     }
 }
@@ -532,7 +534,7 @@ void AccountForm::OnNotifyConnectionState(int state, QString msg)
 {
     if((state == 10000 || state == 0) && !msg.isEmpty())
     {
-        m_login_failure ++;
+        m_login_failure++;
 
         if(ui->checkBox_autoChangeServer->isChecked() && ui->checkBox_autoLogin->isChecked())
         {
@@ -541,13 +543,9 @@ void AccountForm::OnNotifyConnectionState(int state, QString msg)
             else
                 ui->comboBox_server->setCurrentIndex(ui->comboBox_server->currentIndex() + 1);
         }
-
-        if(m_login_failure >= 10 && ui->checkBox_autoKillGame->isChecked())
+        //登录失败五次就暂停登录
+        if(m_login_failure % 5 == 0)
         {
-            //失败次数重置
-            m_login_failure = 0;
-            //通知杀掉游戏进程
-            NotifyKillProcess();
             //暂停本程序的自动登录
             ui->label_status->setText(tr("Auto-Login off."));
             if(m_polcn_lock)
@@ -562,10 +560,18 @@ void AccountForm::OnNotifyConnectionState(int state, QString msg)
             }
             NotifyLoginProgressEnd();
         }
-    }
-    else if(state == 1 || state == 2)
-    {
+        //登录失败十次并且勾选自动杀游戏进程
+        if(m_login_failure >= 10 && ui->checkBox_autoKillGame->isChecked())
+        {
+            //失败次数重置
+            m_login_failure = 0;
+            //通知杀掉游戏进程
+            NotifyKillProcess();
+        }
+    } else if(state == 1 || state == 2) {
+        //登录成功就重置
         m_login_failure = 0;
+        m_first_login = true;
     }
 }
 

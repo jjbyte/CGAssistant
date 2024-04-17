@@ -60,8 +60,8 @@ private:
     HANDLE m_polcn_map;
     HANDLE m_glt_lock;
     HANDLE m_glt_map;
-    int m_login_failure;
-    bool m_first_login;
+    int m_login_failure = 0;
+    bool m_first_login = true;
 };
 
 #endif // ACCOUNTFORM_H
