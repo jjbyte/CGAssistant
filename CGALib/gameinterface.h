@@ -1255,6 +1255,8 @@ namespace CGA
 		virtual bool RegisterTradeStateNotify(const std::function<void(int)> &callback) = 0;
 		virtual bool RegisterDownloadMapNotify(const std::function<void(cga_download_map_t)> &callback) = 0;
 		virtual bool RegisterConnectionStateNotify(const std::function<void(cga_conn_state_t)> &callback) = 0;
+
+        virtual bool RegisterNetParesNotify(const std::function<void(cga_conn_state_t)> &callback) = 0;
 	};
 
 	extern "C" CGAInterface *CreateInterface();

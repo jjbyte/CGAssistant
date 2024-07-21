@@ -31,19 +31,25 @@ private slots:
 
     void on_horizontalSlider_loginDuration_valueChanged(int value);
 
+    void on_checkBox_autoLogin_stateChanged(int arg1);
+
 public slots:
     void OnNotifyFillAutoLogin(int game, QString user, QString pwd, QString gid,
                                int bigserver, int server, int character,
-                               bool autologin, bool skipupdate, bool autochangeserver,bool autokillgame,int interval,
+                               bool autologin, bool skipupdate, bool autochangeserver,bool autokillgame,int interval,bool autoMinimized,
                                bool create_chara, int create_chara_chara, int create_chara_eye, int create_chara_mou, int create_chara_color,
                                QString create_chara_points, QString create_chara_elements, QString create_chara_name);
     void OnHttpLoadAccount(QString query, QByteArray postdata, QJsonDocument* doc);
     void OnNotifyConnectionState(int state, QString msg);
+
+    void OnStopAutoLogin();
+
 signals:
     void NotifyAutoAttachProcess(quint32 pid, quint32 tid);
     void NotifyKillProcess();
     void NotifyLoginProgressStart();
     void NotifyLoginProgressEnd();
+    void NotifyChangeWindow(Qt::WindowStates);
 
 private:
     Ui::AccountForm *ui;
@@ -62,6 +68,8 @@ private:
     HANDLE m_glt_map;
     int m_login_failure = 0;
     bool m_first_login = true;
+    int m_refresh_failure = 0;
+    bool m_minimized = false;
 };
 
 #endif // ACCOUNTFORM_H

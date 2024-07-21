@@ -108,6 +108,13 @@ void CGA_NotifyConnectionState(const CGA::cga_conn_state_t &msg)
 	}
 }
 
+void CGA_NotifyNetParse(const CGA::cga_conn_state_t &msg)
+{
+    if (server && server.get()) {
+        server->pub("NotifyNetParse", msg);
+    }
+}
+
 BOOL CGA_CreatePortMutex(int port)
 {
 	WCHAR szMutex[64];

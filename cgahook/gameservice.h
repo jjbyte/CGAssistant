@@ -990,6 +990,9 @@ namespace CGA
 		void(__cdecl *NET_WriteMailPacket_cgitem)(int a1, int cardid, const char *msg, int unk);
 		void(__cdecl *NET_WritePetMailPacket_cgitem)(int a1, int cardid, int petid, int itemid, const char *msg, int unk);
 
+        void(__cdecl *NET_ParesMain)(int param_num, const char *buf);
+        void(__cdecl *NET_FlushBuff)(int a1, const char *buf);
+
 		void(__cdecl *NPC_ShowDialogInternal)(int type, int options, int dlgid, int objid, const char *message);
 		int(__cdecl *NPC_ClickDialog)(int option, int index, int a3, char a4);
 		void(__cdecl *NPC_ClickExchangeDialog)(int option);

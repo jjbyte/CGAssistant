@@ -389,7 +389,7 @@ extern "C"
 				LPCWSTR pModuleName = ExtractFileName(szModulePath);
 				if (!_wcsicmp(pModuleName, L"cg_se_3000.exe") && !strcmp(szClass, "Ä§Á¦±¦±´"))
 				{
-					//InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_se_3000);
+					InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_se_3000);
 				}
 				else if (!_wcsicmp(pModuleName, L"cg_item_6000.exe") && !strcmp(szClass, "Ä§Á¦±¦±´"))
 				{

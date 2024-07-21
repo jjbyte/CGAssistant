@@ -129,10 +129,10 @@ bool AccountForm::IsGltExpired()
 
     if(m_glt.isEmpty())
         return true;
-
+/*
     if(m_loginresult.isValid() && m_loginresult.elapsed() > 1000*60)
         return true;
-
+*/
     if(m_glt_map && m_glt_lock)
     {
         WaitForSingleObject(m_glt_lock, INFINITE);
@@ -152,6 +152,30 @@ bool AccountForm::IsGltExpired()
         return true;
 
     return false;
+}
+
+//取消自动登录
+void AccountForm::OnStopAutoLogin() {
+
+    ui->checkBox_autoLogin->setChecked(false);
+    ui->label_status->setText(tr("Auto-Login off."));
+
+    if(g_CGAInterface->IsConnected()){
+        g_CGAInterface->LoginGameServer("", "", -1, -1, -1, -1);
+    }
+
+    if(m_polcn_lock)
+    {
+        CloseHandle(m_polcn_lock);
+        m_polcn_lock = NULL;
+    }
+    if(m_polcn_map)
+    {
+        CloseHandle(m_polcn_map);
+        m_polcn_map = NULL;
+    }
+
+    NotifyLoginProgressEnd();
 }
 
 void AccountForm::OnAutoLogin()
@@ -174,29 +198,11 @@ void AccountForm::OnAutoLogin()
     if(!ui->checkBox_autoLogin->isChecked())
     {
         //取消自动登录
-        if(g_CGAInterface->IsConnected()){
-            g_CGAInterface->LoginGameServer("", "", -1, -1, -1, -1);
-        }
-
-        ui->label_status->setText(tr("Auto-Login off."));
-
-        if(m_polcn_lock)
-        {
-            CloseHandle(m_polcn_lock);
-            m_polcn_lock = NULL;
-        }
-        if(m_polcn_map)
-        {
-            CloseHandle(m_polcn_map);
-            m_polcn_map = NULL;
-        }
-
-        NotifyLoginProgressEnd();
+        OnStopAutoLogin();
         return;
     }
 
-    if(g_CGAInterface->IsConnected())
-    {
+    if(g_CGAInterface->IsConnected()) {
         int ingame = 0;
         if(g_CGAInterface->IsInGame(ingame) && ingame == 1)
         {
@@ -215,9 +221,18 @@ void AccountForm::OnAutoLogin()
             }
 
             NotifyLoginProgressEnd();
+
+            //判断是否需要最小化游戏
+            if(m_minimized) {
+                NotifyChangeWindow(Qt::WindowState::WindowMinimized);
+                m_minimized = false;
+            }
+
             m_first_login = true;
             //登录成功就重置
             m_login_failure = 0;
+            //登录成功重置
+            m_refresh_failure = 0;
             return;
         }
 
@@ -244,9 +259,7 @@ void AccountForm::OnAutoLogin()
                 }
             }
         }
-    }
-    else if(!m_game_pid || !IsProcessThreadPresent(m_game_pid, m_game_tid))
-    {
+    } else if(!m_game_pid || !IsProcessThreadPresent(m_game_pid, m_game_tid)) {
         m_first_login = true;
         on_pushButton_getgid_clicked();
     }
@@ -353,8 +366,13 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
             }
             else
             {
-                ui->textEdit_output->setText(tr("Login refused by server.\n"));
-                ui->textEdit_output->append(m_StdOut);
+                if(m_refresh_failure >= 3) {
+                    OnStopAutoLogin();
+                } else {
+                    ui->textEdit_output->setText(tr("Login refused by server.\n"));
+                    ui->textEdit_output->append(m_StdOut);
+                    m_refresh_failure++;
+                }
             }
         }
         else
@@ -477,6 +495,7 @@ void AccountForm::on_pushButton_getgid_clicked()
 
     if(!errorMsg.isEmpty())
         ui->textEdit_output->setText(errorMsg);
+
 }
 
 void AccountForm::on_pushButton_logingame_clicked()
@@ -577,7 +596,7 @@ void AccountForm::OnNotifyConnectionState(int state, QString msg)
 
 void AccountForm::OnNotifyFillAutoLogin(int game, QString user, QString pwd, QString gid,
                                         int bigserver, int server, int character,
-                                        bool autologin, bool skipupdate, bool autochangeserver,bool autokillgame,int interval,
+                                        bool autologin, bool skipupdate, bool autochangeserver,bool autokillgame,int interval,bool autoMinimized,
                                         bool create_chara, int create_chara_chara, int create_chara_eye, int create_chara_mou, int create_chara_color,
                                         QString create_chara_points, QString create_chara_elements, QString create_chara_name)
 {
@@ -622,6 +641,10 @@ void AccountForm::OnNotifyFillAutoLogin(int game, QString user, QString pwd, QSt
     {
         ui->horizontalSlider_loginDuration->setValue(interval);
         on_horizontalSlider_loginDuration_valueChanged(interval);
+    }
+
+    if(autoMinimized) {
+        m_minimized = true;
     }
 
     if(create_chara)
@@ -851,5 +874,12 @@ void AccountForm::on_checkBox_createChara_stateChanged(int arg1)
 void AccountForm::on_horizontalSlider_loginDuration_valueChanged(int value)
 {
     ui->label_loginDuration->setText(tr("%1 s").arg( value ));
+}
+
+void AccountForm::on_checkBox_autoLogin_stateChanged(int arg1)
+{
+    if(arg1) {
+        m_refresh_failure = 0;
+    }
 }
 

@@ -115,6 +115,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(accountForm, &AccountForm::NotifyAutoAttachProcess, processWorker, &CProcessWorker::OnAutoAttachProcess, Qt::QueuedConnection);
     connect(accountForm, &AccountForm::NotifyLoginProgressStart, this, &MainWindow::OnNotifyLoginProgressStart, Qt::QueuedConnection);
     connect(accountForm, &AccountForm::NotifyLoginProgressEnd, this, &MainWindow::OnNotifyLoginProgressEnd, Qt::QueuedConnection);
+    connect(accountForm, &AccountForm::NotifyChangeWindow, processFrom, &ProcessForm::OnNotifyChangeWindow);
 
     connect(this, &MainWindow::HttpGetGameProcInfo, processWorker, &CProcessWorker::OnHttpGetGameProcInfo, Qt::DirectConnection);
     connect(this, &MainWindow::HttpGetSettings, playerFrom, &PlayerForm::OnHttpGetSettings);
@@ -122,6 +123,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, &MainWindow::HttpLoadScript, scriptForm, &ScriptForm::OnHttpLoadScript);
     connect(this, &MainWindow::HttpLoadAccount, accountForm, &AccountForm::OnHttpLoadAccount);
     connect(this, &MainWindow::HttpKillGame, processWorker, &CProcessWorker::OnKillProcess);
+    connect(this, &MainWindow::NotifyStopAutoLogin, accountForm, &AccountForm::OnStopAutoLogin);
 
     m_playerWorkerThread.start();
     m_processWorkerThread.start();
@@ -135,6 +137,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::closeEvent(QCloseEvent *event)
 {
+    //停止自动登录
+    NotifyStopAutoLogin();
+
+    //杀死游戏进程
+    HttpKillGame();
+
     m_playerWorkerThread.quit();
     m_playerWorkerThread.wait();
 

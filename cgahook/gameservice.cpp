@@ -310,6 +310,8 @@ void CGA_NotifyTradeState(int state);
 void CGA_NotifyDownloadMap(const CGA::cga_download_map_t &msg);
 void CGA_NotifyConnectionState(const CGA::cga_conn_state_t &msg);
 
+void CGA_NotifyNetParse(const CGA::cga_conn_state_t &msg);
+
 char *__cdecl NewV_strstr(char *a1, const char *a2)
 {
 	if (!strcmp(a2, "gid:") && g_CGAService.m_fakeCGSharedMem[0])
@@ -456,31 +458,33 @@ int __fastcall NewOnLoginResult(void *pthis, int dummy, int a1, int result, cons
 			auto cwndbtn = ((*(char **)g_CGAService.g_MainCwnd) + 0x1F0);
 			auto page = *(int *)(cwndbtn + 0x968);
 			auto hwnd = *(HWND *)(cwndbtn + 0x164);
-			if (page == 0)
-			{
-				if (gametype == 4 || gametype == 40)
-					SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
-				else if (gametype == 1)
-					SendMessageA(hwnd, LB_SETCURSEL, 1, 0);
-				else if (gametype == 11)
-					SendMessageA(hwnd, LB_SETCURSEL, 2, 0);
-			}
+            if (page == 0) {
+                if (gametype == 4 || gametype == 40)
+                    SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
+                else if (gametype == 1)
+                    SendMessageA(hwnd, LB_SETCURSEL, 1, 0);
+                else if (gametype == 11 || gametype == 110)
+                    SendMessageA(hwnd, LB_SETCURSEL, 2, 0);
+            }
 
 			g_CGAService.GoNext(cwndbtn, 0);
 
 			page = *(int *)(cwndbtn + 0x968);
 
-			if (page == 1)
-			{
-				if (gametype == 4)
-					SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
-				else if (gametype == 40)
-					SendMessageA(hwnd, LB_SETCURSEL, 1, 0);
-				else if (gametype == 1)
-					SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
-				else if (gametype == 11)
-					SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
-			}
+            if (page == 1) {
+                if (gametype == 4)
+                    SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
+                else if (gametype == 40)
+                    SendMessageA(hwnd, LB_SETCURSEL, 1, 0);
+                else if (gametype == 1)
+                    SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
+                else if (gametype == 11)
+                    // 金牛
+                    SendMessageA(hwnd, LB_SETCURSEL, 1, 0);
+                else if (gametype == 110)
+                    //牧羊
+                    SendMessageA(hwnd, LB_SETCURSEL, 0, 0);
+            }
 
 			g_CGAService.GoNext(cwndbtn, 0);
 
@@ -742,6 +746,21 @@ void CGAService::NewBATTLE_PlayerAction()
 
 		CGA_NotifyBattleAction(flags);
 	}
+}
+
+void __cdecl New_NET_ParesMain(int param_num, const char *buf)
+{
+    //继续原逻辑
+    g_CGAService.NET_ParesMain(param_num,buf);
+
+    CGA::cga_conn_state_t msg(param_num, buf);
+    //给外部接口使用
+    CGA_NotifyNetParse(msg);
+}
+
+void __cdecl New_NET_FlushBuff(int a1, const char *buf)
+{
+    g_CGAService.NET_FlushBuff(a1,buf);
 }
 
 void __cdecl NewBATTLE_PlayerAction()
@@ -3298,6 +3317,9 @@ void CGAService::Initialize(game_type type)
 		NET_WriteMailPacket_cgitem = CONVERT_GAMEVAR(void(__cdecl *)(int a1, int cardid, const char *msg, int unk), 0x187C20);
 		NET_WritePetMailPacket_cgitem = CONVERT_GAMEVAR(void(__cdecl *)(int a1, int cardid, int petid, int itemid, const char *msg, int unk), 0x187D60);
 
+        NET_ParesMain = CONVERT_GAMEVAR(void(__cdecl *)(int param_num, const char *buf), 0x589FB0); //应答报文解析
+        NET_FlushBuff = CONVERT_GAMEVAR(void(__cdecl *)(int a1, const char *buf), 0x592B90); //刷新发送数据缓冲区
+
 		Move_Player = CONVERT_GAMEVAR(void(__cdecl *)(), 0x98280);//ok
 		UI_HandleLogbackMouseEvent = CONVERT_GAMEVAR(int(__cdecl *)(int, char), 0xD2BF0);//ok
 		UI_HandleLogoutMouseEvent = CONVERT_GAMEVAR(int(__cdecl *)(int, char), 0xD2CD0);//ok
@@ -3567,6 +3589,7 @@ void CGAService::Initialize(game_type type)
 		m_ui_block_chatmsgs = 0;
 
 		DetourTransactionBegin();
+
 		DetourAttach(&(void *&)BATTLE_PlayerAction, ::NewBATTLE_PlayerAction);
 		DetourAttach(&(void *&)NET_WriteEndBattlePacket_cgitem, ::NewNET_WriteEndBattlePacket_cgitem);
 		DetourAttach(&(void *&)NET_ParseTradeItemsPackets, ::NewNET_ParseTradeItemsPackets);
@@ -3589,6 +3612,10 @@ void CGAService::Initialize(game_type type)
 		DetourAttach(&(void *&)NET_ParseServerBasicInfo, ::NewNET_ParseServerBasicInfo);
 		DetourAttach(&(void *&)NET_ParseLoginResult, ::NewNET_ParseLoginResult);
 		DetourAttach(&(void *&)NET_ParseLoginResult2, ::NewNET_ParseLoginResult2);
+
+        DetourAttach(&(void *&)NET_ParesMain, ::New_NET_ParesMain);
+        DetourAttach(&(void *&)NET_FlushBuff, ::New_NET_FlushBuff);
+
 		DetourAttach(&(void *&)R_DrawText, NewR_DrawText);
 		DetourAttach(&(void *&)Move_Player, ::NewMove_Player);
 		DetourAttach(&(void *&)NPC_ShowDialogInternal, ::NewNPC_ShowDialogInternal);

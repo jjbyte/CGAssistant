@@ -136,6 +136,8 @@ namespace CGAServiceProtocol
 	TIMAX_DEFINE_FORWARD(NotifyTradeState, int);
 	TIMAX_DEFINE_FORWARD(NotifyDownloadMap, cga_download_map_t);
 	TIMAX_DEFINE_FORWARD(NotifyConnectionState, cga_conn_state_t);
+
+    TIMAX_DEFINE_FORWARD(NotifyNetParse, cga_conn_state_t);
 }
 
 namespace CGA
@@ -1769,6 +1771,31 @@ namespace CGA
 			}
 			return false;
 		}
+        virtual bool RegisterNetParesNotify(const std::function<void(cga_conn_state_t)> &callback)
+        {
+            if (m_connected)
+            {
+                try
+                {
+                    m_async_client.sub(m_endpoint, CGAServiceProtocol::NotifyNetParse,
+                           [callback](cga_conn_state_t msg) {
+                               if (callback)
+                                   callback(msg);
+                           },
+                           [](auto const& e) {
+                               OutputDebugStringA("RegisterParesMainNotify failed 2");
+                               OutputDebugStringA(e.get_error_message().c_str());
+                           }
+                    );
+                    return true;
+                } catch (timax::rpc::exception const& e) {
+
+                    OutputDebugStringA("RegisterParesMainNotify failed");
+                    OutputDebugStringA(e.get_error_message().c_str());
+                }
+            }
+            return false;
+        }
 	};
 
 	CGAInterface *CreateInterface()

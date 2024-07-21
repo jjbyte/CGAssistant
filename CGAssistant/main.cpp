@@ -78,6 +78,10 @@ int main(int argc, char *argv[])
 
     QCommandLineOption interval("interval", "", "interval", "0");
 
+    QCommandLineOption loginduration("loginduration", "", "loginduration", "0");
+
+    QCommandLineOption autoMinimized("autoMinimized");
+
     QCommandLineOption autocreatechara("autocreatechara");
 
     QCommandLineOption createcharachara("createcharachara", "", "createcharachara");
@@ -134,6 +138,8 @@ int main(int argc, char *argv[])
     parser.addOption(autochangeserver);
     parser.addOption(autokillgame);
     parser.addOption(interval);
+    parser.addOption(loginduration);
+    parser.addOption(autoMinimized);
     parser.addOption(autocreatechara);
     parser.addOption(createcharachara);
     parser.addOption(createcharaeye);
@@ -274,6 +280,10 @@ int main(int argc, char *argv[])
         }
     }
 
+    if(parser.value(loginduration).toInt() > 0) {
+        interval = loginduration;
+    }
+
     w.show();
 
     w.NotifyFillStaticSettings(parser.value(killfreeze).toInt(), parser.value(chatmaxlines).toInt());
@@ -290,6 +300,7 @@ int main(int argc, char *argv[])
                           parser.isSet(autochangeserver) ? true : false,
                           parser.isSet(autokillgame) ? true : false,
                           parser.value(interval).toInt(),
+                          parser.isSet(autoMinimized) ? true : false,
                           parser.isSet(autocreatechara) ? true : false,
                           parser.value(createcharachara).toInt(),
                           parser.value(createcharaeye).toInt(),

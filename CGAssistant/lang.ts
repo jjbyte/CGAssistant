@@ -61,12 +61,10 @@
         <translation>获取子账号成功。
 </translation>
     </message>
-    <message>
-        <source>Login refused by server.
-</source>
-        <translation>登录被服务器拒绝。
-</translation>
-    </message>
+<message>
+        <source>Login refused by server. </source>
+        <translation>登录被服务器拒绝。</translation>
+</message>
     <message>
         <source>Fail to parse POLCN_Launcher output, missing &quot;result&quot;.
 </source>

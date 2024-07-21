@@ -97,11 +97,9 @@ void ProcessForm::on_checkBox_syncwnd_stateChanged(int checked)
 void ProcessForm::OnNotifyChangeWindow(Qt::WindowStates st)
 {
     if(m_sync && m_worker->GetAttachedHwnd() && IsWindow((HWND)m_worker->GetAttachedHwnd())){
-        if(st == Qt::WindowState::WindowMinimized)
-        {
+        if(st == Qt::WindowState::WindowMinimized) {
             ShowWindow((HWND)m_worker->GetAttachedHwnd(), SW_MINIMIZE);
-        }
-        else{
+        } else {
             /*HDC hDcWnd=::GetDC(::GetDesktopWindow());
 
             HPEN  hPen=::CreatePen(PS_SOLID,3,RGB(255,0,0));
