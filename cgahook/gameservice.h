@@ -724,6 +724,11 @@ namespace CGA
 		virtual bool SendMail(int index, const std::string &msg);
 		virtual bool SendPetMail(int index, int petid, int itemid, const std::string &msg);
 		virtual cga_game_server_info_t GetGameServerInfo();
+        virtual bool OpenMall();
+        virtual bool BuyMallStore(cga_buy_items_t items);
+        virtual void CloseMall();
+        virtual bool LearnPetSkill(int skillIndex, int petIndex, int petSkillIndex);
+
 	public:
 		int *g_server_time;
 		int *g_local_time;
@@ -990,8 +995,11 @@ namespace CGA
 		void(__cdecl *NET_WriteMailPacket_cgitem)(int a1, int cardid, const char *msg, int unk);
 		void(__cdecl *NET_WritePetMailPacket_cgitem)(int a1, int cardid, int petid, int itemid, const char *msg, int unk);
 
-        void(__cdecl *NET_ParesMain)(int param_num, const char *buf);
-        void(__cdecl *NET_FlushBuff)(int a1, const char *buf);
+        int(__cdecl *NET_ParesMain)(int a1, const char *buf); // 接收数据
+        int(__cdecl *NET_FlushBuff)(int a1, const char *buf); // 发送数据
+
+        void(__cdecl *Request_Mall_Data)(); // 请求商城数据
+        void(__cdecl *Close_Mall)(); // 关闭商城,不会重刷动画
 
 		void(__cdecl *NPC_ShowDialogInternal)(int type, int options, int dlgid, int objid, const char *message);
 		int(__cdecl *NPC_ClickDialog)(int option, int index, int a3, char a4);
@@ -1155,6 +1163,9 @@ namespace CGA
 		void ParseAssessingResult(int success, const char *buf);
 		void ParseCraftingResult(int success, const char *buf);
 
+
+        void ParseResult(int fd,const char *buf); //处理服务器响应结果
+
 		IDirectDraw *GetDirectDraw();
 		IDirectDrawSurface *GetDirectDrawBackSurface();
 		void ParseBattleUnits(const char *buf);
@@ -1239,12 +1250,17 @@ namespace CGA
 		bool WM_DeleteCard(int index, bool packetonly);
 		bool WM_SendMail(int index, const char *msg);
 		bool WM_SendPetMail(int index, int petid, int itempos, const char *str);
+        bool WM_OpenMall();
+        bool WM_BuyMallStore(cga_buy_items_t *items);
+        void WM_CloseMall();
+        bool WM_LearnPetSkill(int skillIndex, int petIndex, int petSkillIndex);
 
 		bool m_initialized;
 		bool m_btl_highspeed_enable;
 		bool m_gametextui_enable;
 		bool m_btl_double_action;
 		bool m_btl_pet_skill_packet_send;
+
 		struct
 		{
 			bool isdelay;
@@ -1334,6 +1350,12 @@ namespace CGA
 
 		char m_fakeCGSharedMem[1024];
 		WCHAR m_GameTextUICurrentScript[1024];
+
+        std::string m_npc_dialog;
+        int m_skill_index;
+        int m_pet_index;
+        int m_pet_skill_index;
+
 	};
 }
 
@@ -1412,5 +1434,9 @@ namespace CGA
 #define WM_CGA_DELETE_CARD WM_USER+10072
 #define WM_CGA_SEND_MAIL WM_USER+10073
 #define WM_CGA_SEND_PET_MAIL WM_USER+10074
+#define WM_CGA_CLOSE_MALL WM_USER+10075
+#define WM_CGA_OPEN_MALL WM_USER+10076
+#define WM_CGA_BUY_MALL_STORE WM_USER+10077
+#define WM_CGA_LEARN_PET_SKILL WM_USER+10078
 
 #define CGA_PORT_BASE 4396

@@ -42,53 +42,38 @@ void ANSIToUnicode(const std::string &str, std::wstring &out)
 	MultiByteToWideChar(CP_ACP, 0, str.c_str(), str.length(), (LPWSTR)out.data(), len);
 }
 
+using namespace CGA;
+
+DWORD current_process_id = GetCurrentProcessId();
+
+CGAService g_CGAService;
+
 void WriteLog(LPCSTR fmt, ...)
 {
 #if 0
-	char buffer[4096];
-	va_list argptr;
-	int cnt;
-	va_start(argptr, fmt);
-	cnt = vsprintf(buffer, fmt, argptr);
-	va_end(argptr);
+    char buffer[10240];
+    va_list argptr;
+    int cnt;
+    va_start(argptr, fmt);
+    cnt = vsprintf(buffer, fmt, argptr);
+    va_end(argptr);
 
-	FILE *fp = fopen("cga_log.txt", "a+");
-	if (fp)
-	{
-		setlocale(LC_ALL, "chs");
+    char fileName[64];
+    sprintf(fileName,"cga_%lu.log",current_process_id);
 
-		SYSTEMTIME tm;
-		GetLocalTime(&tm);
-		fprintf(fp, "%02d:%02d:%02d.%03d\t", tm.wHour, tm.wMinute, tm.wSecond, tm.wMilliseconds);
+    FILE *fp = fopen(fileName, "a+");
+    if (fp) {
+        setlocale(LC_ALL, "chs");
 
-		fputs(buffer, fp);
-		fclose(fp);
-	}
+        SYSTEMTIME tm;
+        GetLocalTime(&tm);
+        fprintf(fp, "%02d:%02d:%02d.%03d\t", tm.wHour, tm.wMinute, tm.wSecond, tm.wMilliseconds);
+
+        fputs(buffer, fp);
+        fclose(fp);
+    }
 #endif
 }
-
-void WriteLog2(LPCSTR buffer)
-{
-#if 0
-	FILE *fp = fopen("cga_log.txt", "a+");
-	if (fp)
-	{
-		setlocale(LC_ALL, "chs");
-
-		SYSTEMTIME tm;
-		GetLocalTime(&tm);
-		fprintf(fp, "%02d:%02d:%02d.%03d\t", tm.wHour, tm.wMinute, tm.wSecond, tm.wMilliseconds);
-
-		fputs(buffer, fp);
-		fclose(fp);
-	}
-
-#endif
-}
-
-using namespace CGA;
-
-CGAService g_CGAService;
 
 CXorValue::CXorValue(int value)
 {
@@ -320,6 +305,39 @@ char *__cdecl NewV_strstr(char *a1, const char *a2)
 	}
 
 	return g_CGAService.V_strstr(a1, a2);
+}
+
+static inline std::string ito62(int num) {
+    bool negative = num < 0;
+    num = negative ? -num : num;
+    const static std::string symbols = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::stringstream buf;
+    do {
+        buf << symbols.at(num % symbols.size());
+        num /= symbols.size();
+    } while (num > 0);
+    std::string result = buf.str();
+    std::reverse(result.begin(), result.end());
+    if (negative) {
+        result = "-" + result;
+    }
+
+    return result;
+}
+
+std::vector<std::string> splitString(const std::string& s, char delimiter) {
+    std::vector<std::string> tokens;
+    size_t start = 0, end = s.find(delimiter);
+
+    while (end != std::string::npos) {
+        tokens.push_back(s.substr(start, end - start));
+        start = end + 1;
+        end = s.find(delimiter, start);
+    }
+
+    tokens.push_back(s.substr(start, end));
+
+    return tokens;
 }
 
 double CGAService::GetNextAnimTickCount()
@@ -702,11 +720,8 @@ int __fastcall NewCMainDialog_OnInitDialog(void *pthis, int dummy)
 void CGAService::NewBATTLE_PlayerAction()
 {
 	int prevPlayerStatus = *g_btl_player_status;
-
 	BATTLE_PlayerAction();
-
 	int playerStatus = *g_btl_player_status;
-
 	if (prevPlayerStatus == 2 && playerStatus == 0)
 	{
 		//Double action
@@ -714,8 +729,7 @@ void CGAService::NewBATTLE_PlayerAction()
 	}
 	if (prevPlayerStatus != 1 && playerStatus == 1)
 	{
-		//WriteLog("CGA_NotifyBattleAction player\n");
-
+        //Notify player action
 		int flags = FL_BATTLE_ACTION_ISPLAYER;
 		if (m_btl_double_action)
 			flags |= FL_BATTLE_ACTION_ISDOUBLE;
@@ -728,14 +742,9 @@ void CGAService::NewBATTLE_PlayerAction()
 	{
 		if (m_btl_pet_skill_packet_send)
 		{
-			//WriteLog("m_btl_pet_skill_packet_send = true\n");
 			*g_btl_action_done = 1;
-			m_btl_pet_skill_packet_send = false;
+            m_btl_pet_skill_packet_send = false;
 			return;
-		}
-		else
-		{
-			//WriteLog("CGA_NotifyBattleAction pet\n");
 		}
 		//Notify pet action
 		int flags = 0;
@@ -748,19 +757,25 @@ void CGAService::NewBATTLE_PlayerAction()
 	}
 }
 
-void __cdecl New_NET_ParesMain(int param_num, const char *buf)
+int __cdecl New_NET_ParesMain(int param_num, const char *buf)
 {
+    if(strlen(buf) < 512) {
+        WriteLog("receive [%d][%s]\n", param_num, buf);
+    }
     //继续原逻辑
-    g_CGAService.NET_ParesMain(param_num,buf);
+    int ret = g_CGAService.NET_ParesMain(param_num,buf);
 
-    CGA::cga_conn_state_t msg(param_num, buf);
-    //给外部接口使用
-    CGA_NotifyNetParse(msg);
+    //响应包解析处理
+    g_CGAService.ParseResult(param_num,buf);
+
+    return ret;
 }
 
-void __cdecl New_NET_FlushBuff(int a1, const char *buf)
+int  __cdecl New_NET_FlushBuff(int a1, const char *buf)
 {
-    g_CGAService.NET_FlushBuff(a1,buf);
+    WriteLog("send [%d][%s]\n", a1, buf);
+    int ret = g_CGAService.NET_FlushBuff(a1,buf);
+    return ret;
 }
 
 void __cdecl NewBATTLE_PlayerAction()
@@ -775,6 +790,47 @@ void __cdecl NewNET_WriteEndBattlePacket_cgitem(int a1, int a2)
 	//WriteLog("NewNET_WriteEndBattlePacket_cgitem\n");
 
 	CGA_NotifyBattleAction(FL_BATTLE_ACTION_END);
+}
+
+void CGAService::ParseResult(int fd,const char *buf)
+{
+    //分割字符串
+    std::vector<std::string> result = splitString(buf, ' ');
+    if(result.size() > 4) {
+        //角色当前坐标
+        int xpos = 0, ypos = 0;
+        xpos = g_player_xpos->decode();
+        ypos = g_player_ypos->decode();
+        std::string xPos = ito62(xpos);
+        std::string yPos = ito62(ypos);
+        std::string npcId = ito62(*g_npc_dialog_npcid);
+        char sBuf[32] = {0};
+        //处理学习宠物技能响应包
+        if(result[0] == "R-$") {
+            if(result[1] == "o") {
+                //保存dialogId
+                m_npc_dialog = result[3];
+            } else if(result[1] == "p" && m_pet_index >= 0) {
+                // 发送选择宠物包
+                //[ZlX v l 5v 2bd 0 0 ]
+                sprintf(sBuf, "ZlX %s %s %s %s 0 %d ", xPos.c_str(),yPos.c_str(),result[3].c_str(),npcId.c_str(),m_pet_index);
+                NET_FlushBuff(fd, sBuf);
+                m_pet_index = -1;
+                m_npc_dialog = "";
+            } else if(result[1] == "q" && m_pet_skill_index >= 0) {
+                // 发送宠物技能栏包
+                //[ZlX v l 5w 2bd 0 4 ]
+                sprintf(sBuf, "ZlX %s %s %s %s 0 %d ", xPos.c_str(),yPos.c_str(),result[3].c_str(),npcId.c_str(),m_pet_skill_index);
+                NET_FlushBuff(fd, sBuf);
+                m_pet_skill_index = -1;
+                m_npc_dialog = "";
+            }
+        }
+    }
+
+    //CGA::cga_conn_state_t msg(param_num, buf);
+    //给外部接口使用
+    //CGA_NotifyNetParse(msg);
 }
 
 void CGAService::NewNET_ParseTradeItemsPackets(int a1, const char *buf)
@@ -839,8 +895,6 @@ void CGAService::NewNET_ParseTradePetPackets(int a1, int index, const char *buf)
 
 	//WriteLog("NewNET_ParseTradePetPackets\n");
 
-	//WriteLog2(buf);
-
 	char name[256];
 
 	if (0 == NET_ParseDelimeter(buf, '|', 1, 255, name))
@@ -892,8 +946,6 @@ void CGAService::NewNET_ParseTradePetSkillPackets(int a1, int index, const char 
 	NET_ParseTradePetSkillPackets(a1, index, buf);
 
 	//WriteLog("NewNET_ParseTradePetSkillPackets\n");
-
-	//WriteLog2(buf);
 
 	cga_trade_stuff_info_t info(TRADE_STUFFS_PETSKILL);
 
@@ -1407,14 +1459,10 @@ void CGAService::NewNET_ParseBattlePackets(int a1, const char *buf)
 
 		CGA_NotifyBattleMotionPacket(buf);
 
-		if (m_btl_highspeed_enable)
-		{
-			if (strstr(buf, "END|"))
-			{
+		if (m_btl_highspeed_enable) {
+			if (strstr(buf, "END|")) {
 				NET_ParseBattlePackets(a1, "M|END|");
-			}
-			else
-			{
+			} else {
 				m_btl_delayanimpacket.isdelay = true;
 				m_btl_delayanimpacket.a1 = a1;
 				strcpy(m_btl_delayanimpacket.buf, buf);
@@ -1423,9 +1471,7 @@ void CGAService::NewNET_ParseBattlePackets(int a1, const char *buf)
 			}
 			return;
 		}
-	}
-	else if (*buf == 'C')
-	{
+	} else if (*buf == 'C') {
 		ParseBattleUnits(buf);
 
 		if (m_btl_highspeed_enable && m_btl_delayanimpacket.isdelay)
@@ -1619,7 +1665,7 @@ void CGAService::NewNET_ParseWorkingResult(int a1, int success, int type, const 
 
 void __cdecl NewNET_ParseWorkingResult(int a1, int success, int type, const char *buf)
 {
-	////WriteLog("type=%d, success=%d, buf=%s\n", type, success, buf);
+	//WriteLog("type=%d, success=%d, buf=%s\n", type, success, buf);
 
 	g_CGAService.NewNET_ParseWorkingResult(a1, success, type, buf);
 }
@@ -1732,7 +1778,7 @@ void __cdecl NewNET_ParseMeetEnemy(int a1, int a2, int a3)
 
 void CGAService::NewNET_ParseDownloadMap(int sock, int index1, int index3, int xbase, int ybase, int xtop, int ytop, const char *buf)
 {
-	////WriteLog("NewNET_ParseDownloadMap %d %d %d %d %d %d\n", index1, index3, xbase, ybase, xtop, ytop);
+	//WriteLog("NewNET_ParseDownloadMap %d %d %d %d %d %d\n", index1, index3, xbase, ybase, xtop, ytop);
 	
 	cga_download_map_t msg(index1, index3, xbase, ybase, xtop, ytop);
 	CGA_NotifyDownloadMap(msg);
@@ -1848,7 +1894,7 @@ void CGAService::NewMove_Player()
 			m_move_history.push_back(xy);
 		}
 	}
-
+    //右键
 	if (m_move_to & 2)
 	{
 		m_move_to &= ~2;
@@ -1870,7 +1916,7 @@ void CGAService::NewMove_Player()
 		*g_move_turning = rmouse;
 		return;
 	}
-	else if (m_move_to & 1)
+	else if (m_move_to & 1) //左键
 	{
 		m_move_to &= ~1;
 
@@ -2700,6 +2746,7 @@ void CGAService::Initialize(game_type type)
 	m_game_type = type;
 
 #define CONVERT_GAMEVAR(type, offset) (type)((ULONG_PTR)hGameBase + offset)
+#define CONVERT_GAMEVAR2(type, offset) (type)((ULONG_PTR)offset)
 
 	if (m_game_type == cg_se_3000)
 	{
@@ -3317,8 +3364,11 @@ void CGAService::Initialize(game_type type)
 		NET_WriteMailPacket_cgitem = CONVERT_GAMEVAR(void(__cdecl *)(int a1, int cardid, const char *msg, int unk), 0x187C20);
 		NET_WritePetMailPacket_cgitem = CONVERT_GAMEVAR(void(__cdecl *)(int a1, int cardid, int petid, int itemid, const char *msg, int unk), 0x187D60);
 
-        NET_ParesMain = CONVERT_GAMEVAR(void(__cdecl *)(int param_num, const char *buf), 0x589FB0); //应答报文解析
-        NET_FlushBuff = CONVERT_GAMEVAR(void(__cdecl *)(int a1, const char *buf), 0x592B90); //刷新发送数据缓冲区
+        NET_ParesMain = CONVERT_GAMEVAR2(int(__cdecl *)(int a1, const char *buf), 0x589FB0); //应答报文解析
+        NET_FlushBuff = CONVERT_GAMEVAR2(int(__cdecl *)(int a1, const char *buf), 0x592B90); //刷新发送数据缓冲区
+
+        Request_Mall_Data = CONVERT_GAMEVAR2(void(__cdecl *)(), 0x51EE00);// 请求商城数据
+        Close_Mall = CONVERT_GAMEVAR2(void(__cdecl *)(), 0x51CDB0);// 关闭商城
 
 		Move_Player = CONVERT_GAMEVAR(void(__cdecl *)(), 0x98280);//ok
 		UI_HandleLogbackMouseEvent = CONVERT_GAMEVAR(int(__cdecl *)(int, char), 0xD2BF0);//ok
@@ -3613,8 +3663,8 @@ void CGAService::Initialize(game_type type)
 		DetourAttach(&(void *&)NET_ParseLoginResult, ::NewNET_ParseLoginResult);
 		DetourAttach(&(void *&)NET_ParseLoginResult2, ::NewNET_ParseLoginResult2);
 
-        DetourAttach(&(void *&)NET_ParesMain, ::New_NET_ParesMain);
-        DetourAttach(&(void *&)NET_FlushBuff, ::New_NET_FlushBuff);
+        DetourAttach(&(PVOID&)NET_ParesMain, ::New_NET_ParesMain);
+        DetourAttach(&(PVOID&)NET_FlushBuff, ::New_NET_FlushBuff);
 
 		DetourAttach(&(void *&)R_DrawText, NewR_DrawText);
 		DetourAttach(&(void *&)Move_Player, ::NewMove_Player);
@@ -3886,6 +3936,11 @@ IDirectDrawSurface *CGAService::GetDirectDrawBackSurface()
 CGAService::CGAService()
 {
 	m_initialized = false;
+
+    m_npc_dialog = "";
+    m_skill_index = -1;
+    m_pet_index = -1;
+    m_pet_skill_index = -1;
 }
 
 void CGAService::InitializeGameData(cga_game_data_t data)
@@ -4819,7 +4874,7 @@ void CGAService::WM_GetBankItemsInfo(cga_items_info_t *info)
 				boost::locale::conv::to_utf<char>(g_bank_item_base[itempos].name, "GBK"),
 				attrs,
 				infos,
-				0,
+                0,
 				g_bank_item_base[itempos].count,
 				100 + itempos,
 				0,
@@ -4924,6 +4979,129 @@ bool CGAService::WM_ChangePetState(int petpos, int state)
 bool CGAService::ChangePetState(int petpos, int state)
 {
 	return SendMessageA(g_MainHwnd, WM_CGA_CHANGE_PET_STATE, petpos, state) ? true : false;
+}
+
+bool CGAService::WM_OpenMall()
+{
+    if (!IsInGame()) return false;
+
+    //请求商城数据
+    Request_Mall_Data();
+    if (GetWorldStatus() == 9 && GetGameStatus() == 3) {
+        if (m_game_type == cg_item_6000) {
+            //改变状态
+            SetWorldStatus(16);
+            if(GetWorldStatus() == 16) {
+                *g_game_status_cgitem = 6;
+            }
+            //同步状态
+            char sBuf[256] = {0};
+            sprintf(sBuf, ":)s ");
+            NET_FlushBuff(*g_net_socket, sBuf);
+            return true;
+        }
+    }
+    return false;
+}
+bool CGAService::OpenMall()
+{
+    return SendMessage(g_MainHwnd, WM_CGA_OPEN_MALL, 0, 0) ? true : false;
+}
+
+void CGAService::WM_CloseMall()
+{
+    if (!IsInGame())
+        return;
+
+    if (m_game_type == cg_item_6000) {
+        int worldStatus = GetWorldStatus();
+        if (worldStatus == 15 || worldStatus == 16) {
+            //关闭商城
+            Close_Mall();
+            //改变状态
+            if (GetWorldStatus() != 9) {
+                SetWorldStatus(9);
+            }
+            if (GetGameStatus() != 3) {
+                *g_game_status_cgitem = 3;
+            }
+        }
+        //同步状态
+        char sBuf[256] = {0};
+        sprintf(sBuf, "oid ");
+        NET_FlushBuff(*g_net_socket, sBuf);
+    }
+}
+
+void CGAService::CloseMall()
+{
+    SendMessage(g_MainHwnd, WM_CGA_CLOSE_MALL, 0, 0);
+}
+
+bool CGAService::WM_BuyMallStore(cga_buy_items_t *items)
+{
+    if (!IsInGame())
+        return false;
+
+    if (GetWorldStatus() != 15)
+        return false;
+
+    if (m_game_type == cg_item_6000) {
+        char sBuf[256] = {0};
+        int total = 0;
+        std::string buffer;
+        for (size_t i = 0; i < items->size(); ++i) {
+            char buf[32] = {0};
+            sprintf(buf, "%d|%d\\n", items->at(i).index, items->at(i).count);
+            buffer += buf;
+            total += items->at(i).count;
+        }
+        sprintf(sBuf, "h>M %s %d ", buffer.c_str(), total);
+        NET_FlushBuff(*g_net_socket, sBuf);
+    }
+
+    return true;
+}
+bool CGAService::BuyMallStore(cga_buy_items_t items)
+{
+    return SendMessageA(g_MainHwnd, WM_CGA_BUY_MALL_STORE, (WPARAM)&items, 0) ? true : false;
+}
+
+bool CGAService::WM_LearnPetSkill(int skillIndex, int petIndex, int petSkillIndex)
+{
+    if (!IsInGame())
+        return false;
+
+    if (GetWorldStatus() != 9 || GetGameStatus() != 3)
+        return false;
+
+    if (m_game_type == cg_item_6000) {
+        if(m_npc_dialog.length() > 0 && *g_npc_dialog_npcid > 0) {
+            m_skill_index       = skillIndex;   //技能序号
+            m_pet_index         = petIndex;     //宠物序号
+            m_pet_skill_index   = petSkillIndex;//宠物技能栏序号
+            //角色当前坐标
+            int xpos = 0, ypos = 0;
+            xpos = g_player_xpos->decode();
+            ypos = g_player_ypos->decode();
+            std::string xPos = ito62(xpos);
+            std::string yPos = ito62(ypos);
+            std::string npcId = ito62(*g_npc_dialog_npcid);
+
+            char sBuf[32] = {0};
+            //[ZlX v l 5u 2bd 0 2 ]
+            sprintf(sBuf, "ZlX %s %s %s %s 0 %d ", xPos.c_str(),yPos.c_str(),m_npc_dialog.c_str(),npcId.c_str(),skillIndex);
+            NET_FlushBuff(*g_net_socket, sBuf);
+            m_npc_dialog = "";
+            m_skill_index = -1;
+        }
+    }
+
+    return true;
+}
+bool CGAService::LearnPetSkill(int skillIndex, int petIndex, int petSkillIndex)
+{
+    return SendMessageA(g_MainHwnd, WM_CGA_LEARN_PET_SKILL, skillIndex | (petIndex << 8), petSkillIndex) ? true : false;
 }
 
 bool CGAService::WM_MoveGold(int gold, int opt)
@@ -5162,9 +5340,97 @@ void CGAService::WalkTo(int x, int y)
 
 void CGAService::TurnTo(int x, int y)
 {
-	m_move_to |= 2;
-	m_move_to_x = x;
-	m_move_to_y = y;
+    if (!IsInGame())
+        return;
+
+    if (GetWorldStatus() == 9 && GetGameStatus() == 3) {
+        //角色当前坐标
+        int xpos, ypos;
+        xpos = g_player_xpos->decode();
+        ypos = g_player_ypos->decode();
+        //计算转向
+        int dir = 0;
+        if(x > xpos && y == ypos) {
+            //东
+            dir = 0;
+        } else if (x > xpos && y > ypos) {
+            //东南
+            dir = 1;
+        } else if (x == xpos && y > ypos) {
+            //南
+            dir = 2;
+        } else if (x < xpos && y > ypos) {
+            //西南
+            dir = 3;
+        } else if (x < xpos && y == ypos) {
+            //西
+            dir = 4;
+        } else if (x < xpos && y < ypos) {
+            //西北
+            dir = 5;
+        } else if (x == xpos && y < ypos) {
+            //北
+            dir = 6;
+        } else if (x > xpos && y < ypos) {
+            //东北
+            dir = 7;
+        } else {
+            //原点则直接返回
+            return;
+        }
+
+        //计算拾取方向
+        int pickupDir = -1;
+        if((xpos + 1) == x && ypos == y) {
+            //东 C => 2
+            pickupDir = 2;
+        } else if((xpos + 1) == x && (ypos + 1) == y) {
+            //东南 D => 3
+            pickupDir = 3;
+        } else if(xpos == x && (ypos + 1) == y) {
+            //南 E => 4
+            pickupDir = 4;
+        } else if((xpos - 1) == x && (ypos + 1) == y) {
+            //西南 F => 5
+            pickupDir = 5;
+        } else if((xpos - 1) == x && ypos == y) {
+            //西 G => 6
+            pickupDir = 6;
+        } else if((xpos - 1) == x && (ypos - 1) == y) {
+            //西北 H => 7
+            pickupDir = 7;
+        } else if(xpos == x && (ypos - 1) == y) {
+            //北 A => 0
+            pickupDir = 0;
+        } else if((xpos + 1) == x && (ypos - 1) == y) {
+            //东北 B => 1
+            pickupDir = 1;
+        } else {
+            //原点或者非角色周围八个坐标点
+            pickupDir = -1;
+        }
+
+        char buf[2];
+        buf[0] = (dir >= 6) ? dir-6 + 'A' : dir + 'C';  // 01234567 -> CDEFGHAB
+        buf[1] = 0;
+        if (m_game_type == cg_item_6000) {
+            //发转向包
+            NET_WriteMovePacket_cgitem(xpos, ypos, buf);
+            // ABCDEFGH -> 01234567
+            // dir = (dir >= 6) ? dir - 6 : dir + 2;
+            if(pickupDir >= 0) {
+                //发拾取包
+                char buf2[32];
+                std::string xPos = ito62(xpos);
+                std::string yPos = ito62(ypos);
+                sprintf(buf2, "bfe %s %s %d ", xPos.c_str(),yPos.c_str(),pickupDir);
+                NET_FlushBuff(*g_net_socket, buf2);
+            }
+        } else {
+            //TODO
+        }
+    }
+
 }
 
 void CGAService::SetMoveSpeed(int speed)
@@ -5291,6 +5557,18 @@ bool CGAService::WM_BattleNormalAttack(int target)
 		NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
 	else
 		NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
+/*
+    //判断是否在队伍里
+    if (*g_is_in_team) {
+        //二动普通攻击
+        char buf2[32];
+        sprintf(buf2, "H|%X", 15);
+        if (m_game_type == cg_item_6000)
+            NET_WriteBattlePacket_cgitem(*g_net_socket, buf2);
+        else
+            NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf2);
+    }
+*/
 	*g_btl_action_done = 1;
 	COMMON_PlaySound(57, 320, 240);
 
@@ -5312,8 +5590,8 @@ bool CGAService::WM_BattleSkillAttack(int skillpos, int skilllv, int target)
 	bool packetOnly = false;
 	if (target & 0x10000000)
 	{
-		target &= ~0x10000000;
-		packetOnly = true;
+        target &= ~0x10000000;
+        packetOnly = true;
 	}
 
 	if (!g_skill_base[skillpos].name[0])
@@ -5322,19 +5600,19 @@ bool CGAService::WM_BattleSkillAttack(int skillpos, int skilllv, int target)
 		return false;
 	}
 
-	if (packetOnly)
-	{
-		char buf[32];
-		sprintf(buf, "S|%X|%X|%X", skillpos, skilllv, target);
-		if (m_game_type == cg_item_6000)
-			NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
-		else
-			NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
-		//*g_btl_action_done = 1;
-		//COMMON_PlaySound(57, 320, 240);
-		//WriteLog("BattleSkillAttack %d %d %d\n", skillpos, skilllv, target);
-		return TRUE;
-	}
+    if (packetOnly) {
+        //一动技能攻击
+        char buf[32];
+        sprintf(buf, "S|%X|%X|%X", skillpos, skilllv, target);
+        if (m_game_type == cg_item_6000)
+            NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
+        else
+            NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
+        //*g_btl_action_done = 1;
+        //COMMON_PlaySound(57, 320, 240);
+        //WriteLog("BattleSkillAttack %d %d %d\n", skillpos, skilllv, target);
+        return true;
+    }
 
 	if (*g_btl_player_status != 1)
 		return false;
@@ -5349,7 +5627,6 @@ bool CGAService::WM_BattleSkillAttack(int skillpos, int skilllv, int target)
 		//WriteLog("skill lv%d not enough\n", skilllv);
 		return false;
 	}
-
 	if (g_skill_base[skillpos].sub[skilllv].available == 0)
 	{
 		//WriteLog("skill lv%d not available, downgrade\n", skilllv);
@@ -5363,14 +5640,12 @@ bool CGAService::WM_BattleSkillAttack(int skillpos, int skilllv, int target)
 				break;
 			}
 		}
-
 		if (!available)
 		{
 			//WriteLog("skill lv%d not available\n", skilllv);
 			return false;
 		}
 	}
-
 	if (g_skill_base[skillpos].sub[skilllv].cost > m_battle_units[*g_btl_player_pos].curmp)
 	{
 		bool available = false;
@@ -5383,7 +5658,6 @@ bool CGAService::WM_BattleSkillAttack(int skillpos, int skilllv, int target)
 				break;
 			}
 		}
-
 		if (!available)
 		{
 			//WriteLog("skill lv%d no enough mp\n", skilllv);
@@ -5391,16 +5665,15 @@ bool CGAService::WM_BattleSkillAttack(int skillpos, int skilllv, int target)
 		}
 	}
 
-	char buf[32];
+    char buf[32];
 	sprintf(buf, "S|%X|%X|%X", skillpos, skilllv, target);
 	if (m_game_type == cg_item_6000)
 		NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
 	else
 		NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
+
 	*g_btl_action_done = 1;
 	COMMON_PlaySound(57, 320, 240);
-
-	//WriteLog("BattleSkillAttack2 %d %d %d\n", skillpos, skilllv, target);
 
 	return true;
 }
@@ -5409,7 +5682,7 @@ bool CGAService::BattleSkillAttack(int skillpos, int skilllv, int target, bool p
 {
 	if (packetOnly)
 	{
-		target |= 0x10000000;
+        target |= 0x10000000;
 	}
 
 	////WriteLog("BattleSkillAttack %d %d %d\n", skillpos, skilllv, target);
@@ -5516,21 +5789,20 @@ bool CGAService::WM_BattleChangePet(int petid)
 	if (*g_btl_player_status != 1)
 		return false;
 
-	if ((petid >= 0 && petid <= 4) || petid == 255)
-	{
+	if ((petid >= 0 && petid <= 4) || petid == 255) {
 
-	}
-	else
-	{
+	} else {
 		return false;
 	}
 
 	char buf[32];
 	sprintf(buf, "M|%X", petid);
+
 	if (m_game_type == cg_item_6000)
 		NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
 	else
 		NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
+
 	*g_btl_action_done = 1;
 	COMMON_PlaySound(56, 320, 240);
 
@@ -5550,7 +5822,12 @@ bool CGAService::WM_BattleUseItem(int itempos, int target)
 		return false;
 
 	char buf[32];
-	sprintf(buf, "I|%X|%X", itempos, target);
+    if(target < 0) {
+        sprintf(buf, "Q|%X|", itempos);
+    } else {
+        sprintf(buf, "I|%X|%X", itempos, target);
+    }
+
 	if (m_game_type == cg_item_6000)
 		NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
 	else
@@ -5583,29 +5860,27 @@ bool CGAService::WM_BattlePetSkillAttack(int skillpos, int target)
 		if (*g_btl_player_status != 4)
 			return false;
 	}
+    if (skillpos == 0xFF)
+    {
+        char buf[32];
+        sprintf(buf, "W|FF");
+        if (m_game_type == cg_item_6000)
+            NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
+        else
+            NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
 
-	if (skillpos == 0xFF)
-	{
-		char buf[32];
-		sprintf(buf, "W|FF");
-		if (m_game_type == cg_item_6000)
-			NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
-		else
-			NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
-
-		if (!packetOnly)
-		{
-			*g_btl_action_done = 1;
-			COMMON_PlaySound(57, 320, 240);
-		}
-		else
-		{
-			m_btl_pet_skill_packet_send = true;
-		}
-
-		//WriteLog("BattlePetSkillAttack FF\n");
-		return true;
-	}
+        if (!packetOnly)
+        {
+            *g_btl_action_done = 1;
+            COMMON_PlaySound(57, 320, 240);
+        }
+        else
+        {
+            m_btl_pet_skill_packet_send = true;
+        }
+        //WriteLog("BattlePetSkillAttack FF\n");
+        return true;
+    }
 
 	if (!(*g_btl_petskill_allowbit & (1 << skillpos)))//skill not allowed!!!
 	{
@@ -5618,19 +5893,15 @@ bool CGAService::WM_BattlePetSkillAttack(int skillpos, int target)
 
 	char buf[32];
 	sprintf(buf, "W|%X|%X", skillpos, target);
-
 	if (m_game_type == cg_item_6000)
 		NET_WriteBattlePacket_cgitem(*g_net_socket, buf);
 	else
 		NET_WritePacket(*g_net_buffer, *g_net_socket, net_header_battle, buf);
 
-	if (!packetOnly)
-	{
+	if (!packetOnly) {
 		*g_btl_action_done = 1;
 		COMMON_PlaySound(57, 320, 240);
-	}
-	else
-	{
+	} else {
 		m_btl_pet_skill_packet_send = true;
 	}
 
@@ -6859,19 +7130,18 @@ bool CGAService::WM_ForceMove(int dir, bool show)
 	dy = y = g_player_ypos->decode();
 
 	switch (dir) {
-	case 0: ++dx; break;
-	case 1: ++dx; ++dy; break;
-	case 2: ++dy; break;
-	case 3: --dx; ++dy; break;
-	case 4: --dx; break;
-	case 5: --dx; --dy; break;
-	case 6: --dy; break;
-	case 7: ++dx; --dy; break;
-	default: return false;
+        case 0: ++dx; break;
+        case 1: ++dx; ++dy; break;
+        case 2: ++dy; break;
+        case 3: --dx; ++dy; break;
+        case 4: --dx; break;
+        case 5: --dx; --dy; break;
+        case 6: --dy; break;
+        case 7: ++dx; --dy; break;
+        default: return false;
 	}
 
-	if (WM_IsMapCellPassable(dx, dy))
-	{
+	if (WM_IsMapCellPassable(dx, dy)) {
 		char buf[2];
 		buf[0] = (dir >= 6) ? dir-6 + 'a ' : dir + 'c';
 		buf[1] = 0;

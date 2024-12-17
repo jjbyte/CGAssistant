@@ -122,6 +122,10 @@ namespace CGAServiceProtocol
 	TIMAX_DEFINE_PROTOCOL(CreateCharacter, void(cga_create_chara_t));
 	TIMAX_DEFINE_PROTOCOL(GetGameServerInfo, cga_game_server_info_t());
 	TIMAX_DEFINE_PROTOCOL(SetBlockChatMsgs, void(int));
+    TIMAX_DEFINE_PROTOCOL(CloseMall, void());
+    TIMAX_DEFINE_PROTOCOL(OpenMall, bool());
+    TIMAX_DEFINE_PROTOCOL(BuyMallStore, bool(cga_buy_items_t));
+    TIMAX_DEFINE_PROTOCOL(LearnPetSkill, bool(int, int, int));
 
 	TIMAX_DEFINE_FORWARD(NotifyServerShutdown, int);
 	TIMAX_DEFINE_FORWARD(NotifyBattleAction, int);
@@ -1481,6 +1485,50 @@ namespace CGA
 			}
 			return false;
 		}
+        virtual bool OpenMall(bool &result) {
+            if (m_connected) {
+                try {
+                    result = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::OpenMall);
+                    return true;
+                }
+                catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
+                catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
+            }
+            return false;
+        }
+        virtual bool BuyMallStore(cga_buy_items_t &items, bool &result) {
+            if (m_connected) {
+                try {
+                    result = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::BuyMallStore, items);
+                    return true;
+                }
+                catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
+                catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
+            }
+            return false;
+        }
+        virtual bool CloseMall() {
+            if (m_connected) {
+                try {
+                    m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::CloseMall);
+                    return true;
+                }
+                catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
+                catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
+            }
+            return false;
+        }
+        virtual bool LearnPetSkill(int skillIndex, int petIndex, int petSkillIndex, bool &result) {
+            if (m_connected) {
+                try {
+                    result = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::LearnPetSkill, skillIndex, petIndex, petSkillIndex);
+                    return true;
+                }
+                catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
+                catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
+            }
+            return false;
+        }
 		virtual bool RegisterServerShutdownNotify(const std::function<void(int)> &callback)
 		{
 			if (m_connected)

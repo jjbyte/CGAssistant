@@ -2201,14 +2201,13 @@ bool CBattleAction_PlayerSkillAttack::DoAction(int target, int defaultTarget, CG
     int skill_pos = -1, skill_level = -1;
 
     bool result = false;
-    if(context.m_bIsSkillPerformed == false && GetSkillPos(context, skill_pos, skill_level)){
-
+    if(context.m_bIsSkillPerformed == false && GetSkillPos(context, skill_pos, skill_level)) {
         FixTarget(context, skill_pos, skill_level, target);
         g_CGAInterface->BattleSkillAttack(skill_pos, skill_level, target, false, result);
+        //g_CGAInterface->BattleNormalAttack(target, result);
     }
 
     if(!result){
-
         g_CGAInterface->BattleNormalAttack(defaultTarget, result);
     }
 
@@ -2225,6 +2224,7 @@ bool CBattleAction_PlayerSkillAttack::GetSkillPos(CGA_BattleContext_t &context, 
         const CGA_SkillInfo_t &skill = context.m_PlayerSkills->at(i);
         if(m_SkillName == skill.name)
         {
+
             if(!(context.m_iSkillAllowBit & (1 << skill.id)))
                 continue;
 
@@ -2519,7 +2519,7 @@ bool CBattleAction_PetSkillAttack::DoAction(int target, int defaultTarget, CGA_B
     {
         target = bUseDefaultTarget ? defaultTarget : target;
         FixTarget(context, skillpos, target);
-        if(context.m_bIsPetDoubleAction && !context.m_bIsPlayerEscaped){
+        if(context.m_bIsPetDoubleAction && !context.m_bIsPlayerEscaped) {
             g_CGAInterface->BattlePetSkillAttack(skillpos, target, true, result);
             g_CGAInterface->BattlePetSkillAttack(skillpos, target, true, result);
         } else {

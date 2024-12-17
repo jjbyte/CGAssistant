@@ -605,7 +605,7 @@ protected:
     int m_relation;
     int m_value;
 };
-
+//攻击
 class CBattleAction_PlayerAttack : public CBattleAction
 {
 public:
@@ -619,7 +619,7 @@ public:
         return true;
     }
 };
-
+//防御
 class CBattleAction_PlayerGuard : public CBattleAction
 {
 public:
@@ -633,7 +633,7 @@ public:
         return true;
     }
 };
-
+//逃跑
 class CBattleAction_PlayerEscape : public CBattleAction
 {
 public:
@@ -647,7 +647,7 @@ public:
         return true;
     }
 };
-
+//改变位置
 class CBattleAction_PlayerExchangePosition : public CBattleAction
 {
 public:
@@ -661,7 +661,7 @@ public:
         return true;
     }
 };
-
+//战斗换宠
 class CBattleAction_PlayerChangePet : public CBattleAction
 {
 public:
@@ -681,7 +681,7 @@ protected:
     QString m_PetName;
     int m_Type;//0 = pet, 1=recall, 2=most_level, 3=most_health
 };
-
+//使用技能
 class CBattleAction_PlayerSkillAttack : public CBattleAction
 {
 public:
@@ -700,7 +700,7 @@ protected:
     QString m_SkillName;
     int m_SkillLevel;//0=max
 };
-
+//战斗中使用物品
 class CBattleAction_PlayerUseItem : public CBattleAction
 {
 public:
@@ -719,7 +719,7 @@ protected:
     int m_ItemId;
     int m_ItemType;
 };
-
+//回城
 class CBattleAction_PlayerLogBack : public CBattleAction
 {
 public:
@@ -734,7 +734,7 @@ public:
         return true;
     }
 };
-
+//复活
 class CBattleAction_PlayerRebirth : public CBattleAction
 {
 public:
@@ -747,7 +747,7 @@ public:
     }
     virtual bool CheckAvailable(CGA_BattleContext_t &context);
 };
-
+//什么也不做
 class CBattleAction_PlayerDoNothing : public CBattleAction
 {
 public:

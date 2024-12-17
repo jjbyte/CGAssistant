@@ -414,6 +414,123 @@ void ChangePersDesc(const Nan::FunctionCallbackInfo<v8::Value>& info)
 	}
 }
 
+void OpenMall(const Nan::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto isolate = info.GetIsolate();
+    HandleScope handle_scope(isolate);
+    auto context = isolate->GetCurrentContext();
+
+    bool result = false;
+
+    if (!g_CGAInterface->OpenMall(result))
+    {
+        Nan::ThrowError("RPC Invocation failed.");
+        return;
+    }
+
+    info.GetReturnValue().Set(result);
+}
+void CloseMall(const Nan::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto isolate = info.GetIsolate();
+    HandleScope handle_scope(isolate);
+    auto context = isolate->GetCurrentContext();
+
+    if (!g_CGAInterface->CloseMall())
+    {
+        Nan::ThrowError("RPC Invocation failed.");
+        return;
+    }
+}
+
+void BuyMallStore(const Nan::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto isolate = info.GetIsolate();
+    HandleScope handle_scope(isolate);
+    auto context = isolate->GetCurrentContext();
+
+    if (info.Length() < 1 || !info[0]->IsArray()) {
+        Nan::ThrowTypeError("Arg[0] must be array.");
+        return;
+    }
+
+    bool bResult = false;
+    CGA::cga_buy_items_t items;
+
+    Local<Array> arr = Local<Array>::Cast(info[0]);
+    auto length = arr->Length();
+
+    for (uint32_t i = 0; i < length; ++i)
+    {
+        auto element = arr->Get(context, i);
+        if (!element.IsEmpty() && element.ToLocalChecked()->IsObject())
+        {
+            int index = -1;
+            int count = 0;
+
+            auto obj = Local<Object>::Cast(element.ToLocalChecked());
+
+            auto obj_index = obj->Get(context, String::NewFromUtf8(isolate, "index").ToLocalChecked());
+
+            if (!obj_index.IsEmpty() && obj_index.ToLocalChecked()->IsInt32())
+            {
+                index = obj_index.ToLocalChecked()->Int32Value(context).ToChecked();
+            }
+
+            auto obj_count = obj->Get(context, String::NewFromUtf8(isolate, "count").ToLocalChecked());
+
+            if (!obj_count.IsEmpty() && obj_count.ToLocalChecked()->IsInt32())
+            {
+                count = obj_count.ToLocalChecked()->Int32Value(context).ToChecked();
+            }
+
+            if (count > 0)
+                items.emplace_back(index, count);
+        }
+    }
+
+    if (!g_CGAInterface->BuyMallStore(items, bResult))
+    {
+        Nan::ThrowError("RPC Invocation failed.");
+        return;
+    }
+
+    info.GetReturnValue().Set(bResult);
+}
+
+void LearnPetSkill(const Nan::FunctionCallbackInfo<v8::Value>& info)
+{
+    auto isolate = info.GetIsolate();
+    HandleScope handle_scope(isolate);
+    auto context = isolate->GetCurrentContext();
+
+    if (info.Length() < 1 || !info[0]->IsInt32()) {
+        Nan::ThrowTypeError("Arg[0] must be integer.");
+        return;
+    }
+    if (info.Length() < 2 || !info[1]->IsInt32()) {
+        Nan::ThrowTypeError("Arg[1] must be integer.");
+        return;
+    }
+    if (info.Length() < 3 || !info[2]->IsInt32()) {
+        Nan::ThrowTypeError("Arg[2] must be integer.");
+        return;
+    }
+
+    int skillIndex = info[0]->Int32Value(context).ToChecked();
+    int petIndex = info[1]->Int32Value(context).ToChecked();
+    int petSkillIndex = info[2]->Int32Value(context).ToChecked();
+
+    bool bResult = false;
+    if (!g_CGAInterface->LearnPetSkill(skillIndex, petIndex, petSkillIndex, bResult))
+    {
+        Nan::ThrowError("RPC Invocation failed.");
+        return;
+    }
+
+    info.GetReturnValue().Set(bResult);
+}
+
 void Init(v8::Local<v8::Object> exports) {
 
 	auto isolate = exports->GetIsolate();
@@ -532,6 +649,10 @@ void Init(v8::Local<v8::Object> exports) {
 	exports->Set(context, Nan::New("BattlePetSkillAttack").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(BattlePetSkillAttack)->GetFunction(context).ToLocalChecked());
 	exports->Set(context, Nan::New("BattleDoNothing").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(BattleDoNothing)->GetFunction(context).ToLocalChecked());
 	exports->Set(context, Nan::New("AsyncWaitConnectionState").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(AsyncWaitConnectionState)->GetFunction(context).ToLocalChecked());
+    exports->Set(context, Nan::New("OpenMall").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(OpenMall)->GetFunction(context).ToLocalChecked());
+    exports->Set(context, Nan::New("BuyMallStore").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(BuyMallStore)->GetFunction(context).ToLocalChecked());
+    exports->Set(context, Nan::New("CloseMall").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(CloseMall)->GetFunction(context).ToLocalChecked());
+    exports->Set(context, Nan::New("LearnPetSkill").ToLocalChecked(), Nan::New<v8::FunctionTemplate>(LearnPetSkill)->GetFunction(context).ToLocalChecked());
 }
 
 NODE_MODULE(node_cga, Init)

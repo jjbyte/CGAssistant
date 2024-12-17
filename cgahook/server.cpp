@@ -307,6 +307,10 @@ DWORD WINAPI CGAServerThread(LPVOID)
 				server->register_handler("SendPetMail", timax::bind(&CGAService::SendPetMail, &g_CGAService));
 				server->register_handler("GetGameServerInfo", timax::bind(&CGAService::GetGameServerInfo, &g_CGAService));
 				server->register_handler("SetBlockChatMsgs", timax::bind(&CGAService::SetBlockChatMsgs, &g_CGAService));
+                server->register_handler("CloseMall", timax::bind(&CGAService::CloseMall, &g_CGAService));
+                server->register_handler("OpenMall", timax::bind(&CGAService::OpenMall, &g_CGAService));
+                server->register_handler("BuyMallStore", timax::bind(&CGAService::BuyMallStore, &g_CGAService));
+                server->register_handler("LearnPetSkill", timax::bind(&CGAService::LearnPetSkill, &g_CGAService));
 
 				server->start();
 

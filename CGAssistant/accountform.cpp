@@ -158,6 +158,7 @@ bool AccountForm::IsGltExpired()
 void AccountForm::OnStopAutoLogin() {
 
     ui->checkBox_autoLogin->setChecked(false);
+    //ui->textEdit_output->setText(tr("Auto-Login off."));
     ui->label_status->setText(tr("Auto-Login off."));
 
     if(g_CGAInterface->IsConnected()){
@@ -174,6 +175,13 @@ void AccountForm::OnStopAutoLogin() {
         CloseHandle(m_polcn_map);
         m_polcn_map = NULL;
     }
+
+    //重置首次登录
+    m_first_login = true;
+    //重置登录失败次数
+    m_login_failure = 0;
+    //重置刷新子账号失败次数
+    m_refresh_failure = 0;
 
     NotifyLoginProgressEnd();
 }
@@ -228,28 +236,25 @@ void AccountForm::OnAutoLogin()
                 m_minimized = false;
             }
 
+            //重置首次登录
             m_first_login = true;
-            //登录成功就重置
+            //重置登录失败次数
             m_login_failure = 0;
-            //登录成功重置
+            //重置刷新子账号失败次数
             m_refresh_failure = 0;
+
             return;
         }
 
         int gameStatus = 0;
         int worldStatus = 0;
-        if(g_CGAInterface->GetGameStatus(gameStatus) && g_CGAInterface->GetWorldStatus(worldStatus))
-        {
-            if((worldStatus == 2 && gameStatus == 1) || (worldStatus == 3 && gameStatus == 11))
-            {
-                if(IsGltExpired())
-                {
+        if(g_CGAInterface->GetGameStatus(gameStatus) && g_CGAInterface->GetWorldStatus(worldStatus)) {
+            if((worldStatus == 2 && gameStatus == 1) || (worldStatus == 3 && gameStatus == 11)) {
+                if(IsGltExpired()) {
                     m_first_login = true;
                     on_pushButton_getgid_clicked();
                     return;
-                }
-                else
-                {
+                } else {
                     if(m_first_login || !m_logingame.isValid()  || m_logingame.elapsed() >= ui->horizontalSlider_loginDuration->value() * 1000)
                     {
                         on_pushButton_logingame_clicked();
@@ -287,11 +292,9 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
     if(err.error == QJsonParseError::NoError && doc.isObject())
     {
         QJsonObject obj = doc.object();
-        if(obj.contains("result"))
-        {
+        if(obj.contains("result")) {
             auto result = obj.take("result");
-            if(result == 0)
-            {
+            if(result == 0) {
                 auto lastgid = ui->comboBox_gid->currentText();
                 ui->comboBox_gid->clear();
                 auto gid_array = obj.take("gid").toArray();
@@ -326,7 +329,12 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
 
                 if(m_glt_map && m_glt_lock)
                 {
-                    WaitForSingleObject(m_glt_lock, INFINITE);
+                    // WaitForSingleObject(m_glt_lock, INFINITE);
+                    DWORD dw = WaitForSingleObject(m_glt_lock, 10000);
+                    if (dw != WAIT_OBJECT_0) {
+                        ui->textEdit_output->setText(tr("Waiting for other CGAssistant to login..."));
+                        return;
+                    }
                     auto glt_view = MapViewOfFile(m_glt_map, FILE_MAP_WRITE | FILE_MAP_READ, 0, 0, 0x1000 );
                     if(glt_view)
                     {
@@ -363,10 +371,9 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
                         on_pushButton_logingame_clicked();
                     }
                 }
-            }
-            else
-            {
-                if(m_refresh_failure >= 3) {
+            } else {
+                //登录账号密码错误或者其他获取子账号异常3次，暂停自动登录，防止被锁IP
+                if(m_refresh_failure > 3) {
                     OnStopAutoLogin();
                 } else {
                     ui->textEdit_output->setText(tr("Login refused by server.\n"));
@@ -374,18 +381,24 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
                     m_refresh_failure++;
                 }
             }
-        }
-        else
-        {
+        } else {
             ui->textEdit_output->setText(tr("Fail to parse POLCN_Launcher output, missing \"result\".\n"));
             ui->textEdit_output->append(m_StdOut);
         }
     }
+    /*
     else
     {
-        ui->textEdit_output->setText(tr("Fail to parse POLCN_Launcher output.\n"));
-        ui->textEdit_output->append(m_StdOut);
+        //连接不上登录服务器3次，暂停自动登录，防止被锁IP
+        if(m_refresh_failure > 3) {
+            OnStopAutoLogin();
+        } else {
+            ui->textEdit_output->setText(tr("Fail to parse POLCN_Launcher output.\n"));
+            ui->textEdit_output->append(m_StdOut);
+            m_refresh_failure++;
+        }
     }
+     */
 
     ui->label_status->setText(tr("POLCN_Launcher finished with exitCode %1").arg(exitCode));
 }
@@ -840,6 +853,8 @@ void AccountForm::OnHttpLoadAccount(QString query, QByteArray postdata, QJsonDoc
                }
            }
        }
+       //重置glt，重新刷新一次子账号
+       m_glt = "";
     }
     else
     {
@@ -880,6 +895,7 @@ void AccountForm::on_checkBox_autoLogin_stateChanged(int arg1)
 {
     if(arg1) {
         m_refresh_failure = 0;
+    } else {
+        OnStopAutoLogin();
     }
 }
-

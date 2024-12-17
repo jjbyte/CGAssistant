@@ -283,6 +283,15 @@ LRESULT CALLBACK NewWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
 		return g_CGAService.WM_SendMail((int)wParam, (const char *)lParam);
 	case WM_CGA_SEND_PET_MAIL:
 		return g_CGAService.WM_SendPetMail((int)(wParam & 0xFF), (int)((wParam >> 8) & 0xFF), (int)((wParam >> 16) & 0xFF), (const char *)lParam);
+    case WM_CGA_CLOSE_MALL:
+        g_CGAService.WM_CloseMall();
+        return 1;
+    case WM_CGA_OPEN_MALL:
+        return g_CGAService.WM_OpenMall() ? 1 : 0;
+    case WM_CGA_BUY_MALL_STORE:
+        return g_CGAService.WM_BuyMallStore((CGA::cga_buy_items_t *)wParam) ? 1 : 0;
+    case WM_CGA_LEARN_PET_SKILL:
+        return g_CGAService.WM_LearnPetSkill((wParam & 0xFF), (wParam >> 8), lParam) ? 1 : 0;
 	case WM_KEYDOWN:
 		if (GetForegroundWindow() == g_MainHwnd)
 		{

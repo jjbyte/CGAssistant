@@ -62,8 +62,10 @@ private:
     QTime m_loginquery;
     QTime m_loginresult;
     QTime m_logingame;
+
     HANDLE m_polcn_lock;
     HANDLE m_polcn_map;
+
     HANDLE m_glt_lock;
     HANDLE m_glt_map;
     int m_login_failure = 0;
