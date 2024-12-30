@@ -45,6 +45,8 @@ signals:
     void HttpLoadAccount(QString query, QByteArray postdata, QJsonDocument* doc);
     void HttpKillGame();
     void NotifyStopAutoLogin();
+    void HttpGetAllGameAccount(QJsonDocument* doc);
+    void HttpGetCurrentGameAccount(QJsonDocument* doc);
     
 private slots:
     void on_tabWidget_currentChanged(int index);

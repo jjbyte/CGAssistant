@@ -124,6 +124,8 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, &MainWindow::HttpLoadAccount, accountForm, &AccountForm::OnHttpLoadAccount);
     connect(this, &MainWindow::HttpKillGame, processWorker, &CProcessWorker::OnKillProcess);
     connect(this, &MainWindow::NotifyStopAutoLogin, accountForm, &AccountForm::OnStopAutoLogin);
+    connect(this, &MainWindow::HttpGetAllGameAccount, accountForm, &AccountForm::OnHttpGetAllGameAccount);
+    connect(this, &MainWindow::HttpGetCurrentGameAccount, accountForm, &AccountForm::OnHttpGetCurrentGameAccount);
 
     m_playerWorkerThread.start();
     m_processWorkerThread.start();

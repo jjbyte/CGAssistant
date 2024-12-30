@@ -215,7 +215,21 @@ int main(int argc, char *argv[])
                             res->setStatusCode(qhttp::ESTATUS_OK);
                             res->end("");
                             return;
-                       }
+                       } else if(0 == subreq.compare("GetAllGameAccount")) {
+                            QJsonDocument doc;
+                            w.HttpGetAllGameAccount(&doc);
+
+                            res->setStatusCode(qhttp::ESTATUS_OK);
+                            res->end(doc.toJson());
+                            return;
+                        } else if(0 == subreq.compare("GetCurrentGameAccount")) {
+                            QJsonDocument doc;
+                            w.HttpGetCurrentGameAccount(&doc);
+
+                            res->setStatusCode(qhttp::ESTATUS_OK);
+                            res->end(doc.toJson());
+                            return;
+                        }
                     }
                 }
                 else if(req->method() == qhttp::THttpMethod::EHTTP_POST)

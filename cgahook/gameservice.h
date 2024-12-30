@@ -1356,6 +1356,12 @@ namespace CGA
         int m_pet_index;
         int m_pet_skill_index;
 
+        long card_point;     //点卡
+        long mall_point;     //商城积分
+
+        int m_ui_battle_anim_speed_state; // 战斗相关加速状态  0 不加速; 1 全局加速; 2 战斗中加速; 3 战斗前后加速
+        int m_ui_battle_anim_speed_tick; // 加速值
+
 	};
 }
 
@@ -1438,5 +1444,6 @@ namespace CGA
 #define WM_CGA_OPEN_MALL WM_USER+10076
 #define WM_CGA_BUY_MALL_STORE WM_USER+10077
 #define WM_CGA_LEARN_PET_SKILL WM_USER+10078
+#define WM_CGA_GET_MALL_POINT WM_USER+10079
 
 #define CGA_PORT_BASE 4396

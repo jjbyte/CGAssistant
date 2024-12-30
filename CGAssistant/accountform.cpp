@@ -295,13 +295,17 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
         if(obj.contains("result")) {
             auto result = obj.take("result");
             if(result == 0) {
+                gameAccountList.clear(); //清空列表
                 auto lastgid = ui->comboBox_gid->currentText();
                 ui->comboBox_gid->clear();
                 auto gid_array = obj.take("gid").toArray();
                 for(auto i = 0; i<gid_array.count(); ++i)
                 {
                     auto gid_object = gid_array[i].toObject();
-                    ui->comboBox_gid->addItem(gid_object.take("name").toString());
+                    QString gid = gid_object.take("name").toString();
+                    int status = gid_object.take("status").toInt();
+                    ui->comboBox_gid->addItem(gid);
+                    gameAccountList.append({gid,status});
                 }
 
                 if(!lastgid.isEmpty())
@@ -312,6 +316,8 @@ void AccountForm::OnPOLCNFinish(int exitCode, QProcess::ExitStatus exitStatus)
                             ui->comboBox_gid->setCurrentIndex(i);
                     }
                 }
+
+                currentGameAccount = ui->comboBox_gid->currentText();;
 
                 m_serverid = obj.take("serverid").toInt();
                 m_glt = obj.take("glt").toString();
@@ -863,6 +869,39 @@ void AccountForm::OnHttpLoadAccount(QString query, QByteArray postdata, QJsonDoc
     }
 end:
    doc->setObject(obj);
+}
+
+void AccountForm::OnHttpGetAllGameAccount(QJsonDocument* doc)
+{
+    QJsonObject obj;
+    if(gameAccountList.size() > 0) {
+        obj.insert("errcode", 0);
+        QJsonArray gidList;
+        for (auto value : gameAccountList) {
+            QJsonObject ga;
+            ga.insert("name",value.name);
+            ga.insert("status",value.status);
+            gidList.insert(gidList.end(), ga);
+        }
+        obj.insert("gidList", gidList);
+    } else {
+        obj.insert("errcode", 1);
+        obj.insert("message", "none gid");
+    }
+    doc->setObject(obj);
+}
+
+void AccountForm::OnHttpGetCurrentGameAccount(QJsonDocument* doc)
+{
+    QJsonObject obj;
+    if(currentGameAccount.isNull() || currentGameAccount.isEmpty()) {
+        obj.insert("errcode", 1);
+        obj.insert("message", "none gid");
+    } else {
+        obj.insert("errcode", 0);
+        obj.insert("gid", currentGameAccount);
+    }
+    doc->setObject(obj);
 }
 
 void AccountForm::on_checkBox_createChara_stateChanged(int arg1)

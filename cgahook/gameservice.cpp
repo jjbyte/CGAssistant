@@ -307,14 +307,15 @@ char *__cdecl NewV_strstr(char *a1, const char *a2)
 	return g_CGAService.V_strstr(a1, a2);
 }
 
+const static std::string BASE62_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 static inline std::string ito62(int num) {
     bool negative = num < 0;
     num = negative ? -num : num;
-    const static std::string symbols = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     std::stringstream buf;
     do {
-        buf << symbols.at(num % symbols.size());
-        num /= symbols.size();
+        buf << BASE62_CHARS.at(num % BASE62_CHARS.size());
+        num /= BASE62_CHARS.size();
     } while (num > 0);
     std::string result = buf.str();
     std::reverse(result.begin(), result.end());
@@ -323,6 +324,15 @@ static inline std::string ito62(int num) {
     }
 
     return result;
+}
+
+// 将62进制数转换为十进制
+static inline long base62ToDecimal(const std::string& base62) {
+    long num = 0;
+    for (char c : base62) {
+        num = num * 62 + BASE62_CHARS.find(c);
+    }
+    return num;
 }
 
 std::vector<std::string> splitString(const std::string& s, char delimiter) {
@@ -365,12 +375,10 @@ bool CGAService::IsUIDialogPresent(int dialog)
 
 VOID CGAService::NewSleep(_In_ DWORD dwMilliseconds)
 {
-	if (m_game_type == game_type::polcn)
-	{
+	if (m_game_type == game_type::polcn) {
 
-	}
-	else
-	{
+	} else {
+        /*
 		if (*g_next_anim_tick >= 900000000.0)
 			*g_next_anim_tick -= (double)((int)(*g_next_anim_tick) - ((int)(*g_next_anim_tick) % 900000000));
 
@@ -378,8 +386,43 @@ VOID CGAService::NewSleep(_In_ DWORD dwMilliseconds)
 		{
 			*g_mouse_states |= 1;
 		}
-	}
+        */
 
+        int gameStatus = GetGameStatus();
+        int worldStatus = GetWorldStatus();
+        if (dwMilliseconds == 1 && worldStatus == 2 && gameStatus == 0 && !(*g_is_ingame)) {
+            *g_mouse_states |= 1;
+        }
+        if (dwMilliseconds == 1 && worldStatus == 1 && gameStatus == 0 && !(*g_is_ingame)) {
+            *g_mouse_states |= 1;
+        }
+        //是否开启加速
+        if (m_ui_battle_anim_speed_state) {
+            //全局加速
+            if (m_ui_battle_anim_speed_state == 1) {
+                *g_next_anim_tick -= (double)m_ui_battle_anim_speed_tick;
+            } else if (m_ui_battle_anim_speed_state == 2) {
+                //战斗中加速
+                if (worldStatus == 10) {
+                    *g_next_anim_tick -= (double)m_ui_battle_anim_speed_tick;
+                }
+            } else if (m_ui_battle_anim_speed_state == 3) {
+                //战斗中加速
+                if (worldStatus == 10) {
+                    *g_next_anim_tick -= (double)m_ui_battle_anim_speed_tick;
+                } else if (worldStatus == 9) {
+                    //进入战斗和退出战斗加速
+                    if (gameStatus == 1 || gameStatus == 2 || gameStatus == 5 || gameStatus == 8) {
+                        *g_next_anim_tick -= (double)m_ui_battle_anim_speed_tick;
+                    }
+                }
+            }
+        } else {
+            if (*g_next_anim_tick >= 900000000.0) {
+                *g_next_anim_tick -= (double)((int)(*g_next_anim_tick) - ((int)(*g_next_anim_tick) % 900000000));
+            }
+        }
+	}
 	pfnSleep(dwMilliseconds);
 }
 
@@ -805,8 +848,9 @@ void CGAService::ParseResult(int fd,const char *buf)
         std::string yPos = ito62(ypos);
         std::string npcId = ito62(*g_npc_dialog_npcid);
         char sBuf[32] = {0};
-        //处理学习宠物技能响应包
         if(result[0] == "R-$") {
+            //处理学习宠物技能响应包
+
             if(result[1] == "o") {
                 //保存dialogId
                 m_npc_dialog = result[3];
@@ -825,6 +869,10 @@ void CGAService::ParseResult(int fd,const char *buf)
                 m_pet_skill_index = -1;
                 m_npc_dialog = "";
             }
+        } else if(result[0] == ")n$") {
+            //处理商城响应包
+            card_point = base62ToDecimal(result[2]);
+            mall_point = base62ToDecimal(result[3]);
         }
     }
 

@@ -41,8 +41,9 @@ public slots:
                                QString create_chara_points, QString create_chara_elements, QString create_chara_name);
     void OnHttpLoadAccount(QString query, QByteArray postdata, QJsonDocument* doc);
     void OnNotifyConnectionState(int state, QString msg);
-
     void OnStopAutoLogin();
+    void OnHttpGetAllGameAccount(QJsonDocument* doc);
+    void OnHttpGetCurrentGameAccount(QJsonDocument* doc);
 
 signals:
     void NotifyAutoAttachProcess(quint32 pid, quint32 tid);
@@ -62,6 +63,14 @@ private:
     QTime m_loginquery;
     QTime m_loginresult;
     QTime m_logingame;
+
+    struct GameAccount {
+        QString name;
+        int status;
+    };
+
+    QList<GameAccount> gameAccountList;  //子账号列表
+    QString  currentGameAccount; //当前选择的子账号
 
     HANDLE m_polcn_lock;
     HANDLE m_polcn_map;

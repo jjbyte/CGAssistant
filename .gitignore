@@ -35,6 +35,6 @@
 *.app
 
 .idea/
-CGANode/node_modules/
+node_modules/
 build/
 Release/
