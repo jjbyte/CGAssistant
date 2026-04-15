@@ -77,45 +77,47 @@ void WorkingResultNotify(CGA::cga_working_result_t results)
 
 void WorkingResultAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (WorkingResultNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "type").ToLocalChecked(), Integer::New(isolate, data->m_results.type));
-		obj->Set(context, String::NewFromUtf8(isolate, "success").ToLocalChecked(), Boolean::New(isolate, data->m_results.success));
-		obj->Set(context, String::NewFromUtf8(isolate, "levelup").ToLocalChecked(), Boolean::New(isolate, data->m_results.success));
-		obj->Set(context, String::NewFromUtf8(isolate, "xp").ToLocalChecked(), Integer::New(isolate, data->m_results.xp));		
-		obj->Set(context, String::NewFromUtf8(isolate, "endurance").ToLocalChecked(), Integer::New(isolate, data->m_results.endurance));
-		obj->Set(context, String::NewFromUtf8(isolate, "skillful").ToLocalChecked(), Integer::New(isolate, data->m_results.skillful));
-		obj->Set(context, String::NewFromUtf8(isolate, "intelligence").ToLocalChecked(), Integer::New(isolate, data->m_results.intelligence));
+		Local<Object> obj = Object::New(data->m_isolate);
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "type").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.type));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "success").ToLocalChecked(), Boolean::New(data->m_isolate, data->m_results.success));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "levelup").ToLocalChecked(), Boolean::New(data->m_isolate, data->m_results.success));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "xp").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.xp));		
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "endurance").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.endurance));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "skillful").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.skillful));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "intelligence").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.intelligence));
 		switch (data->m_results.type)
 		{
 		case WORK_TYPE_GATHERING:
-			obj->Set(context, String::NewFromUtf8(isolate, "imgid").ToLocalChecked(), Integer::New(isolate, data->m_results.imgid));
-			obj->Set(context, String::NewFromUtf8(isolate, "count").ToLocalChecked(), Integer::New(isolate, data->m_results.count));
-			obj->Set(context, String::NewFromUtf8(isolate, "itemname").ToLocalChecked(), Nan::New(data->m_results.name).ToLocalChecked());
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "imgid").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.imgid));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "count").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.count));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "itemname").ToLocalChecked(), Nan::New(data->m_results.name).ToLocalChecked());
 			break;
 		case WORK_TYPE_HEALING:
-			obj->Set(context, String::NewFromUtf8(isolate, "status").ToLocalChecked(), Integer::New(isolate, data->m_results.status));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "status").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.status));
 			break;
 		case WORK_TYPE_ASSESSING:
 			break;
 		case WORK_TYPE_CRAFTING:
-			obj->Set(context, String::NewFromUtf8(isolate, "imgid").ToLocalChecked(), Integer::New(isolate, data->m_results.imgid));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "imgid").ToLocalChecked(), Integer::New(data->m_isolate, data->m_results.imgid));
 			break;
 		}
 		argv[1] = obj;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -127,11 +129,13 @@ void WorkingResultAsyncCallBack(uv_async_t *handle)
 
 void WorkingResultTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (WorkingResultNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -153,7 +157,7 @@ void WorkingResultTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 

@@ -76,27 +76,29 @@ void NPCDialogNotify(CGA::cga_npc_dialog_t dlg)
 
 void NPCDialogAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (NPCDialogNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "type").ToLocalChecked(), Integer::New(isolate, data->m_dlg.type));
-		obj->Set(context, String::NewFromUtf8(isolate, "options").ToLocalChecked(), Integer::New(isolate, data->m_dlg.options));
-		obj->Set(context, String::NewFromUtf8(isolate, "dialog_id").ToLocalChecked(), Integer::New(isolate, data->m_dlg.dialog_id));
-		obj->Set(context, String::NewFromUtf8(isolate, "npc_id").ToLocalChecked(), Integer::New(isolate, data->m_dlg.npc_id));
-		obj->Set(context, String::NewFromUtf8(isolate, "message").ToLocalChecked(), Nan::New(data->m_dlg.message).ToLocalChecked());
+		Local<Object> obj = Object::New(data->m_isolate);
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "type").ToLocalChecked(), Integer::New(data->m_isolate, data->m_dlg.type));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "options").ToLocalChecked(), Integer::New(data->m_isolate, data->m_dlg.options));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "dialog_id").ToLocalChecked(), Integer::New(data->m_isolate, data->m_dlg.dialog_id));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "npc_id").ToLocalChecked(), Integer::New(data->m_isolate, data->m_dlg.npc_id));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "message").ToLocalChecked(), Nan::New(data->m_dlg.message).ToLocalChecked());
 		argv[1] = obj;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -108,11 +110,13 @@ void NPCDialogAsyncCallBack(uv_async_t *handle)
 
 void NPCDialogTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (NPCDialogNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -134,7 +138,7 @@ void NPCDialogTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 

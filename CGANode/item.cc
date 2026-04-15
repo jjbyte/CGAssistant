@@ -257,19 +257,21 @@ void TradeStateNotify(int state)
 
 void TradeStateAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (TradeStateNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
-		argv[1] = Integer::New(isolate, data->m_info);
+		argv[1] = Integer::New(data->m_isolate, data->m_info);
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -281,11 +283,13 @@ void TradeStateAsyncCallBack(uv_async_t *handle)
 
 void TradeStateTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (TradeStateNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -307,7 +311,7 @@ void TradeStateTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -358,11 +362,13 @@ void TradeDialogNotify(CGA::cga_trade_dialog_t info)
 
 void TradeDialogAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (TradeDialogNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> argv[3];
 	Local<Value> nullValue = Nan::Null();
@@ -370,10 +376,10 @@ void TradeDialogAsyncCallBack(uv_async_t *handle)
 	if (data->m_result)
 	{
 		argv[1] = Nan::New(data->m_info.name).ToLocalChecked();
-		argv[2] = Integer::New(isolate, data->m_info.level);
+		argv[2] = Integer::New(data->m_isolate, data->m_info.level);
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 3 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 3 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -385,11 +391,13 @@ void TradeDialogAsyncCallBack(uv_async_t *handle)
 
 void TradeDialogTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (TradeDialogNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -411,7 +419,7 @@ void TradeDialogTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -462,7 +470,13 @@ void TradeStuffsNotify(CGA::cga_trade_stuff_info_t info)
 
 void TradeStuffsAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
+	auto data = (TradeStuffsNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 	HandleScope handle_scope(isolate);
 	auto context = isolate->GetCurrentContext();
 
@@ -594,11 +608,13 @@ void TradeStuffsAsyncCallBack(uv_async_t *handle)
 
 void TradeStuffsTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (TradeStuffsNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -620,7 +636,7 @@ void TradeStuffsTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -671,30 +687,32 @@ void PlayerMenuNotify(CGA::cga_player_menu_items_t players)
 
 void PlayerMenuAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (PlayerMenuNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Array> arr = Array::New(isolate);
+		Local<Array> arr = Array::New(data->m_isolate);
 		for (size_t i = 0; i < data->m_players.size(); ++i)
 		{
-			Local<Object> obj = Object::New(isolate);
-			obj->Set(context, String::NewFromUtf8(isolate, "name").ToLocalChecked(), Nan::New(data->m_players[i].name).ToLocalChecked());
-			obj->Set(context, String::NewFromUtf8(isolate, "color").ToLocalChecked(), Integer::New(isolate, data->m_players[i].color));
-			obj->Set(context, String::NewFromUtf8(isolate, "index").ToLocalChecked(), Integer::New(isolate, data->m_players[i].index));
+			Local<Object> obj = Object::New(data->m_isolate);
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "name").ToLocalChecked(), Nan::New(data->m_players[i].name).ToLocalChecked());
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "color").ToLocalChecked(), Integer::New(data->m_isolate, data->m_players[i].color));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "index").ToLocalChecked(), Integer::New(data->m_isolate, data->m_players[i].index));
 			arr->Set(context, i, obj);
 		}
 		argv[1] = arr;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -706,11 +724,13 @@ void PlayerMenuAsyncCallBack(uv_async_t *handle)
 
 void PlayerMenuTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (PlayerMenuNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -732,7 +752,7 @@ void PlayerMenuTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -783,36 +803,38 @@ void UnitMenuNotify(CGA::cga_unit_menu_items_t units)
 
 void UnitMenuAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (UnitMenuNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Array> arr = Array::New(isolate);
+		Local<Array> arr = Array::New(data->m_isolate);
 		for (size_t i = 0; i < data->m_units.size(); ++i)
 		{
-			Local<Object> obj = Object::New(isolate);
-			obj->Set(context, String::NewFromUtf8(isolate, "name").ToLocalChecked(), Nan::New(data->m_units[i].name).ToLocalChecked());
-			obj->Set(context, String::NewFromUtf8(isolate, "level").ToLocalChecked(), Integer::New(isolate, data->m_units[i].level));
-			obj->Set(context, String::NewFromUtf8(isolate, "health").ToLocalChecked(), Integer::New(isolate, data->m_units[i].health));
-			obj->Set(context, String::NewFromUtf8(isolate, "hp").ToLocalChecked(), Integer::New(isolate, data->m_units[i].hp));
-			obj->Set(context, String::NewFromUtf8(isolate, "maxhp").ToLocalChecked(), Integer::New(isolate, data->m_units[i].maxhp));
-			obj->Set(context, String::NewFromUtf8(isolate, "mp").ToLocalChecked(), Integer::New(isolate, data->m_units[i].mp));
-			obj->Set(context, String::NewFromUtf8(isolate, "maxmp").ToLocalChecked(), Integer::New(isolate, data->m_units[i].maxmp));
-			obj->Set(context, String::NewFromUtf8(isolate, "color").ToLocalChecked(), Integer::New(isolate, data->m_units[i].color));
-			obj->Set(context, String::NewFromUtf8(isolate, "index").ToLocalChecked(), Integer::New(isolate, data->m_units[i].index));
+			Local<Object> obj = Object::New(data->m_isolate);
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "name").ToLocalChecked(), Nan::New(data->m_units[i].name).ToLocalChecked());
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "level").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].level));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "health").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].health));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "hp").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].hp));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "maxhp").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].maxhp));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "mp").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].mp));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "maxmp").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].maxmp));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "color").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].color));
+			obj->Set(context, String::NewFromUtf8(data->m_isolate, "index").ToLocalChecked(), Integer::New(data->m_isolate, data->m_units[i].index));
 			arr->Set(context, i, obj);
 		}
 		argv[1] = arr;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -824,11 +846,13 @@ void UnitMenuAsyncCallBack(uv_async_t *handle)
 
 void UnitMenuTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (UnitMenuNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -850,7 +874,7 @@ void UnitMenuTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
