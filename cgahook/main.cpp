@@ -23,6 +23,12 @@ char g_BasicWindowTitle[256] = {0};
 HMODULE g_hCGAModule = NULL;
 WCHAR g_szCGAModulePath[1024] = {0};
 
+// Hook 重试机制
+int g_HookRetryCount = 0;
+const int MAX_HOOK_RETRY = 3;
+DWORD g_LastHookFailTime = 0;
+const DWORD HOOK_RETRY_DELAY = 5000; // 5 秒后重试
+
 using typeCreateMutexA = decltype(CreateMutexA);
 
 typeCreateMutexA *g_pfnCreateMutexA;
@@ -45,7 +51,7 @@ LRESULT UpdateGameWindowTitle(VOID)
 {
 	char szNewTitle[256] = { 0 };
 	if (g_CGAService.IsInGame() && g_CGAService.GetPlayerName() && g_CGAService.GetPlayerName()[0])
-		_snprintf(szNewTitle, 256, "%s CGA [%s] (%d��) #%d", g_BasicWindowTitle, g_CGAService.GetPlayerName(), g_CGAService.GetServerIndex(), g_MainPort - CGA_PORT_BASE + 1);
+		_snprintf(szNewTitle, 256, "%s CGA [%s] (%d��) #%d", g_BasicWindowTitle, g_CGAService.GetPlayerName(), g_CGAService.GetServerIndex(), g_MainPort - CGA_PORT_BASE + 1);
 	else
 		_snprintf(szNewTitle, 256, "%s CGA #%d", g_BasicWindowTitle, g_MainPort - CGA_PORT_BASE + 1);
 	return DefWindowProcA(g_MainHwnd, WM_SETTEXT, NULL, (LPARAM)szNewTitle);
@@ -357,13 +363,39 @@ void InitializeHooks(ULONG ProcessId, ULONG ThreadId, HWND hWnd, CGA::game_type 
 	if (g_MainThreadId && g_MainThreadId != ThreadId)
 		return;
 
+	// 检查是否需要重试
+	if (g_HookRetryCount >= MAX_HOOK_RETRY)
+	{
+		// 已达到最大重试次数，暂停 HOOK，让其他进程继续
+		return;
+	}
+
 	g_MainProcessId = ProcessId;
 	g_MainThreadId = ThreadId;
 	g_MainHwnd = hWnd;
 
 	SetUnhandledExceptionFilter(MinidumpCallback);
 
-	g_CGAService.Initialize(type);
+	__try
+	{
+		g_CGAService.Initialize(type);
+		
+		// HOOK 成功，重置计数器
+		g_HookRetryCount = 0;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		// HOOK 失败，增加重试计数
+		g_HookRetryCount++;
+		g_LastHookFailTime = GetTickCount();
+		
+		if (g_HookRetryCount >= MAX_HOOK_RETRY)
+		{
+			// 已达到最大重试次数
+		}
+		
+		return;
+	}
 
 	if (hWnd && !g_OldProc)
 	{
@@ -387,15 +419,32 @@ extern "C"
 				WCHAR szModulePath[MAX_PATH];
 				GetModuleFileNameW(NULL, szModulePath, MAX_PATH);
 				LPCWSTR pModuleName = ExtractFileName(szModulePath);
-				if (!_wcsicmp(pModuleName, L"cg_se_3000.exe") && !strcmp(szClass, "ħ������"))
+				
+				// 检查是否需要重试
+				if (g_HookRetryCount >= MAX_HOOK_RETRY)
+				{
+					// 检查是否已经过了延迟时间
+					DWORD currentTick = GetTickCount();
+					if (currentTick - g_LastHookFailTime < HOOK_RETRY_DELAY)
+					{
+						// 还在延迟期内，跳过 HOOK
+						goto skip_hook;
+					}
+					else
+					{
+						// 延迟期已过，重置计数器，允许重试
+						g_HookRetryCount = 0;
+					}
+				}
+				if (!_wcsicmp(pModuleName, L"cg_se_3000.exe") && !strcmp(szClass, "ħ������"))
 				{
 					//InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_se_3000);
 				}
-				else if (!_wcsicmp(pModuleName, L"cg_item_6000.exe") && !strcmp(szClass, "ħ������"))
+				else if (!_wcsicmp(pModuleName, L"cg_item_6000.exe") && !strcmp(szClass, "ħ������"))
 				{
 					InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_item_6000);
 				}
-				else if (!_wcsicmp(pModuleName, L"cg_se_6000.exe") && !strcmp(szClass, "ħ������"))
+				else if (!_wcsicmp(pModuleName, L"cg_se_6000.exe") && !strcmp(szClass, "ħ������"))
 				{
 					//InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_se_6000);
 				}
@@ -405,6 +454,7 @@ extern "C"
 				}
 			}
 		}
+		skip_hook:
 		return CallNextHookEx(NULL, Code, wParam, lParam);
 	}
 }
@@ -455,13 +505,30 @@ int WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 		WCHAR szModulePath[MAX_PATH];
 		GetModuleFileNameW(NULL, szModulePath, MAX_PATH);
 		LPCWSTR pModuleName = ExtractFileName(szModulePath);
+				
+				// 检查是否需要重试
+				if (g_HookRetryCount >= MAX_HOOK_RETRY)
+				{
+					// 检查是否已经过了延迟时间
+					DWORD currentTick = GetTickCount();
+					if (currentTick - g_LastHookFailTime < HOOK_RETRY_DELAY)
+					{
+						// 还在延迟期内，跳过 HOOK
+						goto skip_hook;
+					}
+					else
+					{
+						// 延迟期已过，重置计数器，允许重试
+						g_HookRetryCount = 0;
+					}
+				}
 
 		g_hCGAModule = (HMODULE)hinstDLL;
 		GetModuleFileNameW(g_hCGAModule, g_szCGAModulePath, 1024);
 
 		if (!_wcsicmp(pModuleName, L"POLCN_Launcher.exe"))
 		{
-			auto hWnd = FindWindowA(NULL, "������ͨ������ƽ̨");
+			auto hWnd = FindWindowA(NULL, "������ͨ������ƽ̨");
 			if (hWnd)
 			{
 				DWORD pid;
