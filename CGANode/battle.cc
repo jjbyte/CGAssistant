@@ -78,19 +78,21 @@ void BattleActionNotify(int flags)
 
 void BattleActionAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (BattleActionNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> nullValue = Nan::Null();
 	Local<Value> argv[2];
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
-		argv[1] = Integer::New(isolate, data->m_flags);
+		argv[1] = Integer::New(data->m_isolate, data->m_flags);
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate),(data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate),(data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -102,11 +104,13 @@ void BattleActionAsyncCallBack(uv_async_t *handle)
 
 void BattleActionTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (BattleActionNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -128,7 +132,7 @@ void BattleActionTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 

@@ -81,28 +81,30 @@ void DownloadMapNotify(CGA::cga_download_map_t msg)
 
 void DownloadMapAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (DownloadMapNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> nullValue = Nan::Null();
 	Local<Value> argv[2];
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "index1").ToLocalChecked(), Integer::New(isolate, data->m_msg.index1));
-		obj->Set(context, String::NewFromUtf8(isolate, "index3").ToLocalChecked(), Integer::New(isolate, data->m_msg.index3));
-		obj->Set(context, String::NewFromUtf8(isolate, "xbase").ToLocalChecked(), Integer::New(isolate, data->m_msg.xbase));
-		obj->Set(context, String::NewFromUtf8(isolate, "ybase").ToLocalChecked(), Integer::New(isolate, data->m_msg.ybase));
-		obj->Set(context, String::NewFromUtf8(isolate, "xtop").ToLocalChecked(), Integer::New(isolate, data->m_msg.xtop));
-		obj->Set(context, String::NewFromUtf8(isolate, "ytop").ToLocalChecked(), Integer::New(isolate, data->m_msg.ytop));
+		Local<Object> obj = Object::New(data->m_isolate);
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "index1").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.index1));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "index3").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.index3));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "xbase").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.xbase));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "ybase").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.ybase));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "xtop").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.xtop));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "ytop").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.ytop));
 		argv[1] = obj;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -114,11 +116,13 @@ void DownloadMapAsyncCallBack(uv_async_t *handle)
 
 void DownloadMapTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (DownloadMapNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -140,7 +144,7 @@ void DownloadMapTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -676,6 +680,10 @@ public:
 		m_waitxy = false;
 		m_result = false;		
 		m_reason = 0;
+		
+		m_isolate = v8::Isolate::GetCurrent();
+		m_context.Reset(m_isolate, m_isolate->GetCurrentContext());
+		
 		m_worker.data = this;
 	}
 
@@ -689,7 +697,9 @@ public:
 	bool m_waitmapname;
 	bool m_waitmapindex;
 	bool m_waitxy;
-	Persistent<Function> m_callback;
+	v8::Isolate* m_isolate;
+	v8::Persistent<v8::Context> m_context;
+	v8::Persistent<v8::Function> m_callback;
 	uv_work_t m_worker;
 };
 
@@ -865,14 +875,16 @@ void WalkToWorker(uv_work_t* req)
 
 void WalkToAfterWorker(uv_work_t* req, int status)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
+	auto data = (WalkToWorkerData *)req->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	//enable map warp entrance, that is, restore it to default...
 	g_CGAInterface->FixMapWarpStuck(2);
-
-	auto data = (WalkToWorkerData *)req->data;
 
 	auto reasonString = "Unknown exception.";
 
@@ -888,9 +900,9 @@ void WalkToAfterWorker(uv_work_t* req, int status)
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error(reasonString);
-	argv[1] = Integer::New(isolate, data->m_reason);
+	argv[1] = Integer::New(data->m_isolate, data->m_reason);
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 2, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 2, argv);
 	data->m_callback.Reset();
 
 	delete data;
@@ -972,6 +984,10 @@ public:
 		m_delay = 0;
 		m_result = false;
 		m_reason = 0;
+		
+		m_isolate = v8::Isolate::GetCurrent();
+		m_context.Reset(m_isolate, m_isolate->GetCurrentContext());
+		
 		m_worker.data = this;
 	}
 	void SetMapXY(int x, int y)
@@ -1013,7 +1029,9 @@ public:
 	float m_fx, m_fy;
 	std::vector<std::string> m_mapnames;
 	std::vector<int> m_mapindices;
-	Persistent<Function> m_callback;
+	v8::Isolate* m_isolate;
+	v8::Persistent<v8::Context> m_context;
+	v8::Persistent<v8::Function> m_callback;
 	uv_work_t m_worker;
 };
 
@@ -1124,11 +1142,13 @@ void WaitMoveWorker(uv_work_t* req)
 
 void WaitMoveAfterWorker(uv_work_t* req, int status)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (WaitMoveWorkerData *)req->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	auto reasonString = "Unknown exception.";
 
@@ -1144,9 +1164,9 @@ void WaitMoveAfterWorker(uv_work_t* req, int status)
 	Local<Value> argv[2];
 	Local<Value> nullValue = Nan::Null();
 	argv[0] = data->m_result ? nullValue : Nan::Error(reasonString);
-	argv[1] = Integer::New(isolate, data->m_reason);
+	argv[1] = Integer::New(data->m_isolate, data->m_reason);
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 2, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 2, argv);
 	data->m_callback.Reset();
 
 	delete data;

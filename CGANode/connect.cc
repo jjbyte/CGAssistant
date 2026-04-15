@@ -24,12 +24,18 @@ public:
 	{
 		m_port = port;
 		m_result = false;
+		
+		m_isolate = v8::Isolate::GetCurrent();
+		m_context.Reset(m_isolate, m_isolate->GetCurrentContext());
+		
 		m_worker.data = this;
 	}
 
 	bool m_result;
 	int m_port;
-	Persistent<Function> m_callback;
+	v8::Isolate* m_isolate;
+	v8::Persistent<v8::Context> m_context;
+	v8::Persistent<v8::Function> m_callback;
 	uv_work_t m_worker;
 };
 
@@ -63,17 +69,19 @@ void ConnectWorker(uv_work_t* req)
 
 void ConnectAfterWorker(uv_work_t* req, int status)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (ConnectWorkerData *)req->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> nullValue = Nan::Null();
 	Local<Value> argv[1];
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 	data->m_callback.Reset();
 
 	delete data;

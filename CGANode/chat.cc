@@ -85,26 +85,28 @@ void ChatMsgNotify(CGA::cga_chat_msg_t msg)
 
 void ChatMsgAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (ChatMsgNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> nullValue = Nan::Null();
 	Local<Value> argv[2];
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "unitid").ToLocalChecked(), Integer::New(isolate, data->m_msg.unitid));
-		obj->Set(context, String::NewFromUtf8(isolate, "msg").ToLocalChecked(), Nan::New(data->m_msg.msg).ToLocalChecked());
-		obj->Set(context, String::NewFromUtf8(isolate, "color").ToLocalChecked(), Integer::New(isolate, data->m_msg.color));
-		obj->Set(context, String::NewFromUtf8(isolate, "size").ToLocalChecked(), Integer::New(isolate, data->m_msg.size));
+		Local<Object> obj = Object::New(data->m_isolate);
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "unitid").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.unitid));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "msg").ToLocalChecked(), Nan::New(data->m_msg.msg).ToLocalChecked());
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "color").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.color));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "size").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.size));
 		argv[1] = obj;
 	}
 	
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -116,11 +118,13 @@ void ChatMsgAsyncCallBack(uv_async_t *handle)
 
 void ChatMsgTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (ChatMsgNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -142,7 +146,7 @@ void ChatMsgTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -274,24 +278,26 @@ void ConnectionStateNotify(CGA::cga_conn_state_t msg)
 
 void ConnectionStateAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (ConnectionStateNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> nullValue = Nan::Null();
 	Local<Value> argv[2];
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "state").ToLocalChecked(), Integer::New(isolate, data->m_msg.state));
-		obj->Set(context, String::NewFromUtf8(isolate, "msg").ToLocalChecked(), Nan::New(data->m_msg.msg).ToLocalChecked());
+		Local<Object> obj = Object::New(data->m_isolate);
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "state").ToLocalChecked(), Integer::New(data->m_isolate, data->m_msg.state));
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "msg").ToLocalChecked(), Nan::New(data->m_msg.msg).ToLocalChecked());
 		argv[1] = obj;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -303,11 +309,13 @@ void ConnectionStateAsyncCallBack(uv_async_t *handle)
 
 void ConnectionStateTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (ConnectionStateNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -329,7 +337,7 @@ void ConnectionStateTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
@@ -461,23 +469,25 @@ void MessageBoxNotify(std::string msg)
 
 void MessageBoxAsyncCallBack(uv_async_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (MessageBoxNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	Local<Value> nullValue = Nan::Null();
 	Local<Value> argv[2];
 	argv[0] = data->m_result ? nullValue : Nan::Error("Unknown exception.");
 	if (data->m_result)
 	{
-		Local<Object> obj = Object::New(isolate);
-		obj->Set(context, String::NewFromUtf8(isolate, "msg").ToLocalChecked(), Nan::New(data->m_msg).ToLocalChecked());
+		Local<Object> obj = Object::New(data->m_isolate);
+		obj->Set(context, String::NewFromUtf8(data->m_isolate, "msg").ToLocalChecked(), Nan::New(data->m_msg).ToLocalChecked());
 		argv[1] = obj;
 	}
 
-	Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), (data->m_result) ? 2 : 1, argv);
+	Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), (data->m_result) ? 2 : 1, argv);
 
 	data->m_callback.Reset();
 
@@ -489,11 +499,13 @@ void MessageBoxAsyncCallBack(uv_async_t *handle)
 
 void MessageBoxTimerCallBack(uv_timer_t *handle)
 {
-	auto isolate = Isolate::GetCurrent();
-	HandleScope handle_scope(isolate);
-	auto context = isolate->GetCurrentContext();
-
 	auto data = (MessageBoxNotifyData *)handle->data;
+	
+	v8::Locker locker(data->m_isolate);
+	v8::Isolate::Scope isolate_scope(data->m_isolate);
+	v8::HandleScope handle_scope(data->m_isolate);
+	v8::Local<v8::Context> context = data->m_context.Get(data->m_isolate);
+	v8::Context::Scope context_scope(context);
 
 	bool asyncNotCalled = false;
 
@@ -515,7 +527,7 @@ void MessageBoxTimerCallBack(uv_timer_t *handle)
 		Local<Value> argv[1];
 		argv[0] = Nan::Error("Async callback timeout.");
 
-		Local<Function>::New(isolate, data->m_callback)->Call(context, Null(isolate), 1, argv);
+		Local<Function>::New(data->m_isolate, data->m_callback)->Call(context, Null(data->m_isolate), 1, argv);
 
 		data->m_callback.Reset();
 
