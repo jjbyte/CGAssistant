@@ -3,9 +3,18 @@
 
 #include <QWidget>
 #include <QThread>
+#include <memory>
 
 #include "battle.h"
 #include "battlesetting.h"
+
+// 前向声明 - 新架构
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+    class BattleWorkerAdapter;
+}
 
 namespace Ui {
 class AutoBattleForm;
@@ -21,6 +30,11 @@ public:
     explicit AutoBattleForm(CBattleWorker *worker, CPlayerWorker *pworker, QWidget *parent = 0);
     ~AutoBattleForm();
     void SyncAutoBattleWorker();
+    
+    /**
+     * @brief 使用新架构初始化
+     */
+    void InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory);
 private slots:
     void OnCloseWindow();
     void on_horizontalSlider_delayFrom_valueChanged(int value);
@@ -44,12 +58,22 @@ public slots:
     void OnNotifyGetItemsInfo(QSharedPointer<CGA_ItemList_t> items);
     bool ParseBattleSettings(const QJsonValue &val);
     void SaveBattleSettings(QJsonObject &obj);
+    
 private:
+    // 旧架构 (向后兼容)
     CBattleWorker *m_worker;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
+    cga::BattleWorkerAdapter* m_battleAdapter;
+    
     Ui::AutoBattleForm *ui;
     CBattleSettingModel *m_model;
     QSharedPointer<CGA_ItemList_t> m_ItemList;
     QSharedPointer<CGA_PetList_t> m_PetList;
+    
+    // 新架构方法
+    void UpdateBattleSettingsUI();
 };
 
 #endif // AUTOBATTLEFORM_H

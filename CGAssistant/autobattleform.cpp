@@ -1,5 +1,9 @@
 #include "autobattleform.h"
 #include "ui_autobattleform.h"
+#include "worker_adapters.h"
+#include "application/service_factory.h"
+#include "domain/entities.h"
+#include "../CGALib/logger.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
@@ -15,7 +19,10 @@ QString s_BattlePetActionString[BattlePetAction_Max];
 Q_DECLARE_METATYPE(CBattleSettingList)
 
 AutoBattleForm::AutoBattleForm(CBattleWorker *worker, CPlayerWorker *pworker, QWidget *parent) :
-    QWidget(parent), m_worker(worker),
+    QWidget(parent), 
+    m_worker(worker),
+    m_serviceFactory(nullptr),
+    m_battleAdapter(nullptr),
     ui(new Ui::AutoBattleForm)
 {
     qRegisterMetaType<CBattleSettingList>("CBattleSettingList");
@@ -146,6 +153,22 @@ AutoBattleForm::AutoBattleForm(CBattleWorker *worker, CPlayerWorker *pworker, QW
     connect(ui->horizontalSlider_delayFrom, SIGNAL(valueChanged(int)), m_worker, SLOT(OnSetDelayFrom(int)), Qt::ConnectionType::QueuedConnection);
     connect(ui->horizontalSlider_delayTo, SIGNAL(valueChanged(int)), m_worker, SLOT(OnSetDelayTo(int)), Qt::ConnectionType::QueuedConnection);
     connect(m_model, SIGNAL(syncList(CBattleSettingList)), m_worker, SLOT(OnSyncList(CBattleSettingList)), Qt::ConnectionType::QueuedConnection);
+}
+
+void AutoBattleForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    
+    // 创建 Worker 适配器保持兼容
+    m_battleAdapter = new cga::BattleWorkerAdapter(
+        reinterpret_cast<CGA::CGAInterface*>(serviceFactory.get())
+    );
+    
+    // 连接适配器信号
+    connect(m_battleAdapter, &cga::BattleWorkerAdapter::NotifyBattleAction,
+            this, &AutoBattleForm::OnNotifyBattleAction, Qt::QueuedConnection);
+    
+    LOG_INFO("AutoBattleForm 已使用新架构初始化");
 }
 
 AutoBattleForm::~AutoBattleForm()

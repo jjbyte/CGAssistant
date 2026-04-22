@@ -211,6 +211,13 @@ void PlayerForm::OnSetWorkAcc(int value)
 
 void PlayerForm::OnNotifyGetPetsInfo(QSharedPointer<CGA_PetList_t> pets)
 {
+    // 如果使用了新架构，跳过旧架构的处理
+    if (m_serviceFactory) {
+        UpdatePetsInfoNew();
+        return;
+    }
+    
+    // 旧架构处理逻辑
     if(pets->empty())
         return;
 
@@ -300,6 +307,13 @@ void PlayerForm::OnNotifyBattleAction(int flags)
 
 void PlayerForm::OnNotifyGetSkillsInfo(QSharedPointer<CGA_SkillList_t> skills)
 {
+    // 如果使用了新架构，跳过旧架构的处理
+    if (m_serviceFactory) {
+        UpdateSkillsInfoNew();
+        return;
+    }
+    
+    // 旧架构处理逻辑
     if(skills->empty())
         return;
 
@@ -367,6 +381,13 @@ void PlayerForm::OnNotifyGetMapInfo(QString name, int index1, int index2, int in
 
 void PlayerForm::OnNotifyGetPlayerInfo(QSharedPointer<CGA_PlayerInfo_t> player)
 {
+    // 如果使用了新架构，跳过旧架构的处理
+    if (m_serviceFactory) {
+        UpdatePlayerInfoNew();
+        return;
+    }
+    
+    // 旧架构处理逻辑
     if(player->level == 0)
         return;
 
