@@ -299,6 +299,27 @@ auto battleForm = new AutoBattleForm(battleWorker, playerWorker);
 
 ---
 
-**最后更新**: 2026-04-22 21:10  
+### 地图模块 (5% 完成)
+
+**已完成**:
+- [x] mapform_new.h - 创建新架构头文件模板
+
+**待完成**:
+- [ ] 修改 mapform.h 添加服务工厂支持
+- [ ] 修改 mapform.cpp 使用 MapService
+- [ ] 实现 UpdateMapInfoNew 方法
+- [ ] 测试地图显示和寻路
+
+### 其他模块 (0% 完成)
+
+**待完成**:
+- [ ] chatform.cpp - 使用 ChatService
+- [ ] scriptform.cpp - 使用新服务
+- [ ] itemform.cpp - 使用 ItemService
+- [ ] accountform.cpp - 使用新服务
+
+---
+
+**最后更新**: 2026-04-22 21:15  
 **状态**: 阶段 2 (进行中)  
-**完成度**: 15%
+**完成度**: 25%
