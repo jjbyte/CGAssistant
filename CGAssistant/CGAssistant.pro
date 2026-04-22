@@ -31,7 +31,18 @@ SOURCES += main.cpp\
     mapform.cpp \
     mypaintmap.cpp \
     accountform.cpp \
-    chatform.cpp
+    chatform.cpp \
+    \
+    domain/entities.h \
+    domain/services.h \
+    application/services.cpp \
+    application/services.h \
+    application/service_factory.cpp \
+    application/service_factory.h \
+    infrastructure/repositories.cpp \
+    infrastructure/repositories.h \
+    worker_adapters.cpp \
+    worker_adapters.h
 
 HEADERS  += mainwindow.h \
     scriptform.h \
