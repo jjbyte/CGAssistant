@@ -94,6 +94,11 @@ cd CGAssistant
 2. 查看角色名、等级、HP、MP 等信息
 3. 查看宠物列表和技能
 
+**新架构特性**:
+- 数据自动缓存 (2 秒)
+- 性能实时监控
+- 一键刷新
+
 ### 2. 自动战斗
 
 1. 切换到 **Auto Battle** 标签
@@ -109,6 +114,15 @@ cd CGAssistant
 条件 2: 宠物 HP < 50%  → 动作：使用物品 (宠物食品)
 条件 3: 敌人数量 > 3   → 动作：逃跑
 ```
+
+**战斗策略**:
+| 条件类型 | 说明 | 示例 |
+|----------|------|------|
+| Player HP | 玩家 HP | < 30% |
+| Player MP | 玩家 MP | < 20% |
+| Pet HP | 宠物 HP | < 50% |
+| Enemy Count | 敌人数量 | > 5 |
+| Round | 回合数 | > 10 |
 
 ### 3. 物品管理
 
@@ -150,6 +164,7 @@ cd CGAssistant
 **快捷键**:
 - `Ctrl + 点击`: 强制移动
 - `Alt + 点击`: 显示坐标
+- `Shift + 点击`: 添加路径点
 
 ---
 
@@ -187,6 +202,10 @@ cga.walkTo(50, 50);
 if (cga.isMoving()) {
     cga.delay(1000);
 }
+
+// 获取位置
+var pos = cga.getPosition();
+cga.log("当前位置：(" + pos.x + ", " + pos.y + ")");
 ```
 
 ##### 战斗
@@ -205,6 +224,9 @@ if (cga.isInBattle()) {
     
     // 逃跑
     cga.battleEscape();
+    
+    // 换宠
+    cga.battleChangePet(0);  // 宠物 ID
 }
 ```
 
@@ -229,6 +251,17 @@ cga.dropItem(10);
 ```javascript
 // 点击 NPC 对话
 cga.clickNpcDialog(0, 0);  // 选项，索引
+
+// 出售物品
+cga.sellNpcStore([
+    {pos: 10, count: 1},
+    {pos: 11, count: 5}
+]);
+
+// 购买物品
+cga.buyNpcStore([
+    {index: 0, count: 10}
+]);
 ```
 
 ### 实用脚本示例
@@ -328,6 +361,42 @@ function main() {
 main();
 ```
 
+#### 4. 自动补给
+
+```javascript
+function main() {
+    cga.log("开始自动补给");
+    
+    while (true) {
+        var player = cga.getPlayerInfo();
+        
+        // 检查 HP
+        if (player.hp < player.maxhp * 0.5) {
+            cga.log("HP 不足，前往医院");
+            cga.walkTo(医院 X, 医院 Y);
+            cga.delay(2000);
+            // 治疗逻辑...
+        }
+        
+        // 检查 MP
+        if (player.mp < player.maxmp * 0.3) {
+            cga.log("MP 不足，使用魔瓶");
+            var items = cga.getItems();
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].name.contains("魔瓶")) {
+                    cga.useItem(items[i].pos);
+                    break;
+                }
+            }
+        }
+        
+        cga.delay(5000);
+    }
+}
+
+main();
+```
+
 ---
 
 ## 高级功能
@@ -374,6 +443,30 @@ setInterval(function() {
 2. 配置账号信息
 3. 设置自动登录
 4. 勾选 **Auto Login**
+
+### 4. C++ API 使用
+
+```cpp
+#include "application/service_factory.h"
+
+// 创建服务工厂
+auto factory = cga::application::ServiceFactory::Create(g_CGAInterface);
+
+// 获取玩家信息
+auto& player = factory->player();
+auto playerInfo = player.getPlayerInfo();
+
+// 自动战斗
+auto& battle = factory->battle();
+battle.setAutoBattle(true);
+battle.normalAttack(targetId);
+
+// 性能监控
+PERF_START("MyFunction");
+// ... 代码 ...
+PERF_END("MyFunction");
+PERF_PRINT();
+```
 
 ---
 

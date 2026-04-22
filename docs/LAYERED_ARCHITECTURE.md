@@ -1,105 +1,163 @@
-# CGAssistant 分层架构文档
+# CGAssistant 分层架构设计
+
+本文档详细说明 CGAssistant 的分层架构设计、各层职责和交互方式。
+
+---
 
 ## 架构概述
 
-CGAssistant 采用经典的分层架构，将系统划分为四个清晰的层次：
+CGAssistant 采用经典的四层分层架构，将系统划分为清晰的职责边界：
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                  Presentation Layer (展示层)                 │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
-│  │ PlayerForm│ │BattleForm │ │ MapForm   │ │ ChatForm  │   │
-│  └───────────┘ └───────────┘ └───────────┘ └───────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ 使用服务接口
-┌─────────────────────────────────────────────────────────────┐
-│                  Application Layer (应用层)                  │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
-│  │PlayerServ │ │BattleServ │ │ MapServ   │ │ ChatServ  │   │
-│  └───────────┘ └───────────┘ └───────────┘ └───────────┘   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ 调用仓库接口
-┌─────────────────────────────────────────────────────────────┐
-│               Infrastructure Layer (基础设施层)               │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
-│  │PlayerRepo │ │BattleRepo │ │ MapRepo   │ │ ChatRepo  │   │
-│  └───────────┘ └───────────┘ └───────────┘ └───────────┘   │
-│                     ↓ 使用 RPC 客户端                        │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │              CGAInterface (RPC Client)                │  │
-│  └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓ 定义核心概念
-┌─────────────────────────────────────────────────────────────┐
-│                    Domain Layer (领域层)                     │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐   │
-│  │  Player   │ │  Battle   │ │   Map     │ │   Item    │   │
-│  │   Pet     │ │  Skill    │ │   Npc     │ │  Chat     │   │
-│  └───────────┘ └───────────┘ └───────────┘ └───────────┘   │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────┐
+│          Presentation Layer (展示层)            │
+│  Qt UI Forms: PlayerForm, BattleForm, ...      │
+│  职责：用户交互、数据显示、事件处理             │
+└───────────────────┬────────────────────────────┘
+                    ↓ 使用服务接口
+┌────────────────────────────────────────────────┐
+│          Application Layer (应用层)             │
+│  Services: PlayerService, BattleService, ...   │
+│  职责：业务逻辑、流程控制、数据转换             │
+└───────────────────┬────────────────────────────┘
+                    ↓ 调用仓库接口
+┌────────────────────────────────────────────────┐
+│       Infrastructure Layer (基础设施层)         │
+│  Repositories: PlayerRepo, BattleRepo, ...     │
+│  职责：数据持久化、RPC 通信、外部系统集成         │
+└───────────────────┬────────────────────────────┘
+                    ↓ 封装底层 API
+┌────────────────────────────────────────────────┐
+│         Domain Layer (领域层)                   │
+│  Entities: Player, Pet, Item, Skill, ...       │
+│  职责：核心业务概念、业务规则、不变量           │
+└────────────────────────────────────────────────┘
 ```
 
-## 各层职责
+---
 
-### 1. Domain Layer (领域层)
+## 设计原则
+
+### 1. 依赖倒置
+
+- 上层依赖下层的抽象接口
+- 下层不依赖上层
+- 领域层完全独立
+
+```
+展示层 → 应用层 → 基础设施层
+   ↓         ↓           ↓
+领域层 ←─────┴───────────┘
+```
+
+### 2. 单一职责
+
+每层只负责一个方面的职责：
+
+| 层 | 职责 | 变化频率 |
+|----|------|----------|
+| 展示层 | UI 交互 | 高 |
+| 应用层 | 业务流程 | 中 |
+| 基础设施层 | 技术实现 | 高 |
+| 领域层 | 业务规则 | 低 |
+
+### 3. 接口隔离
+
+- 服务接口细化
+- 避免胖接口
+- 按需依赖
+
+---
+
+## 各层详解
+
+### 领域层 (Domain Layer)
 
 **位置**: `CGAssistant/domain/`
 
 **职责**:
-- 定义核心业务实体 (Player, Pet, Item, Battle 等)
-- 定义领域服务接口
-- 包含业务规则和业务逻辑
+- 定义核心业务实体
+- 封装业务规则
+- 维护业务不变量
 - **不依赖**任何其他层
 
-**文件**:
-- `entities.h` - 业务实体定义
-- `services.h` - 领域服务接口
+**核心实体**:
 
-**示例**:
 ```cpp
-// domain/entities.h
+namespace cga { namespace domain {
+
+// 玩家实体
 struct Player {
     QString name;
     int level;
     int hp, maxHp;
+    int mp, maxMp;
+    // ...
     
-    int hpPercent() const {
-        return maxHp > 0 ? (hp * 100 / maxHp) : 0;
-    }
-    
-    bool needsHealing(int threshold = 30) const {
-        return hpPercent() < threshold;
-    }
+    // 业务方法
+    int hpPercent() const;
+    bool needsHealing(int threshold = 30) const;
 };
+
+// 宠物实体
+struct Pet {
+    int id;
+    QString name;
+    int level;
+    // ...
+};
+
+// 物品实体
+struct Item {
+    int itemId;
+    QString name;
+    int count;
+    int pos;
+    // ...
+    
+    bool isValid() const;
+};
+
+// 战斗上下文
+struct BattleContext {
+    int round;
+    int playerPos;
+    int playerStatus;
+    // ...
+    
+    bool isInBattle() const;
+};
+
+}} // namespace cga::domain
 ```
 
-### 2. Infrastructure Layer (基础设施层)
+**服务接口**:
 
-**位置**: `CGAssistant/infrastructure/`
-
-**职责**:
-- 实现数据持久化 (RPC 调用、文件读写等)
-- 实现外部系统通信
-- 实现日志、配置等基础设施
-- **依赖**领域层 (使用领域实体)
-
-**文件**:
-- `repositories.h/.cpp` - 数据仓库实现
-
-**示例**:
 ```cpp
-// infrastructure/repositories.h
-class PlayerRepository {
+// 玩家服务接口
+class IPlayerService {
 public:
-    std::shared_ptr<CGA::cga_player_info_t> getInfo();
-    std::vector<CGA::cga_pet_info_t> getPets();
-    
-private:
-    CGA::CGAInterface* m_cga;
+    virtual ~IPlayerService() = default;
+    virtual std::shared_ptr<Player> getPlayerInfo() = 0;
+    virtual std::vector<Pet> getPets() = 0;
+    virtual std::vector<Item> getItems() = 0;
+    virtual bool useItem(int pos) = 0;
+};
+
+// 战斗服务接口
+class IBattleService {
+public:
+    virtual ~IBattleService() = default;
+    virtual std::shared_ptr<BattleContext> getBattleContext() = 0;
+    virtual bool normalAttack(int target) = 0;
+    virtual bool skillAttack(int skillId, int level, int target) = 0;
+    virtual void setAutoBattle(bool enabled) = 0;
 };
 ```
 
-### 3. Application Layer (应用层)
+---
+
+### 应用层 (Application Layer)
 
 **位置**: `CGAssistant/application/`
 
@@ -107,216 +165,341 @@ private:
 - 实现领域服务接口
 - 协调领域对象和仓库
 - 处理业务流程
-- **依赖**领域层和基础设施层
+- 依赖领域层和基础设施层
 
-**文件**:
-- `services.h/.cpp` - 应用服务实现
+**服务实现**:
 
-**示例**:
 ```cpp
-// application/services.cpp
+namespace cga { namespace application {
+
 class PlayerService : public domain::IPlayerService {
 public:
+    explicit PlayerService(CGA::CGAInterface* cga);
+    
     std::shared_ptr<domain::Player> getPlayerInfo() override {
-        auto player = std::make_shared<domain::Player>();
-        
-        CGA::cga_player_info_t info;
-        if (m_cga->GetPlayerInfo(info)) {
-            player->name = QString::fromStdString(info.name);
-            player->level = info.level;
-            // ... 转换其他字段
+        // 1. 尝试从缓存获取
+        if (m_playerCache.get("player", cached)) {
+            return cached;
         }
+        
+        // 2. 调用仓库获取数据
+        auto info = m_playerRepo->getInfo();
+        
+        // 3. 转换为领域对象
+        auto player = std::make_shared<domain::Player>();
+        player->name = QString::fromStdString(info->name);
+        player->level = info->level;
+        // ...
+        
+        // 4. 更新缓存
+        m_playerCache.set("player", player);
         
         return player;
     }
     
 private:
     CGA::CGAInterface* m_cga;
+    RpcCache<domain::Player> m_playerCache;
+};
+
+}} // namespace cga::application
+```
+
+**服务工厂**:
+
+```cpp
+class ServiceFactory {
+public:
+    static std::shared_ptr<ServiceFactory> Create(CGA::CGAInterface* cga);
+    
+    domain::IPlayerService& player();
+    domain::IBattleService& battle();
+    domain::IMapService& map();
+    domain::INpcService& npc();
+    domain::IChatService& chat();
+    
+private:
+    std::unique_ptr<PlayerService> m_playerService;
+    std::unique_ptr<BattleService> m_battleService;
+    // ...
 };
 ```
 
-### 4. Presentation Layer (展示层)
+---
 
-**位置**: `CGAssistant/` (现有的 Form 文件)
+### 基础设施层 (Infrastructure Layer)
+
+**位置**: `CGAssistant/infrastructure/`
+
+**职责**:
+- 实现数据持久化
+- 封装 RPC 调用
+- 实现外部系统通信
+- 依赖领域层 (使用领域实体)
+
+**仓库实现**:
+
+```cpp
+namespace cga { namespace infrastructure {
+
+class PlayerRepository {
+public:
+    explicit PlayerRepository(CGA::CGAInterface* cga);
+    
+    std::shared_ptr<CGA::cga_player_info_t> getInfo() {
+        auto info = std::make_shared<CGA::cga_player_info_t>();
+        if (m_cga && m_cga->GetPlayerInfo(*info)) {
+            return info;
+        }
+        return nullptr;
+    }
+    
+    std::vector<CGA::cga_pet_info_t> getPets() {
+        std::vector<CGA::cga_pet_info_t> pets;
+        if (m_cga) {
+            CGA::cga_pets_info_t petsInfo;
+            if (m_cga->GetPetsInfo(petsInfo)) {
+                pets.assign(petsInfo.begin(), petsInfo.end());
+            }
+        }
+        return pets;
+    }
+    
+private:
+    CGA::CGAInterface* m_cga;
+};
+
+}} // namespace cga::infrastructure
+```
+
+---
+
+### 展示层 (Presentation Layer)
+
+**位置**: `CGAssistant/` (Qt Forms)
 
 **职责**:
 - UI 显示和用户交互
 - 调用应用服务
-- **依赖**领域层和应用层
+- 依赖领域层和应用层
 
-**示例**:
+**Form 实现**:
+
 ```cpp
-// playerform.cpp
-void PlayerForm::OnNotifyGetPlayerInfo(...)
-{
-    // 使用领域服务
-    auto player = m_playerService->getPlayerInfo();
+class PlayerForm : public QWidget {
+public:
+    explicit PlayerForm(QWidget *parent = nullptr);
     
-    // 显示 UI
-    ui->label_name->setText(player->name);
-    ui->label_hp->setText(QString("%1/%2").arg(player->hp).arg(player->maxHp));
+    void InitializeWithServices(
+        std::shared_ptr<ServiceFactory> factory
+    ) {
+        m_serviceFactory = factory;
+    }
+    
+private slots:
+    void UpdatePlayerInfo() {
+        // 使用服务获取数据
+        auto player = m_serviceFactory->player().getPlayerInfo();
+        
+        // 更新 UI
+        ui->label_name->setText(player->name);
+        ui->label_level->setText(QString("Lv.%1").arg(player->level));
+        ui->label_hp->setText(
+            QString("%1/%2").arg(player->hp).arg(player->maxHp)
+        );
+    }
+    
+private:
+    std::shared_ptr<ServiceFactory> m_serviceFactory;
+};
+```
+
+---
+
+## 数据流
+
+### 典型数据流
+
+```
+用户点击"获取玩家信息"
+    ↓
+PlayerForm::UpdatePlayerInfo()
+    ↓
+m_serviceFactory->player().getPlayerInfo()
+    ↓
+PlayerService::getPlayerInfo()
+    ↓
+[检查缓存] → 命中 → 返回缓存
+    ↓ 未命中
+PlayerRepository::getInfo()
+    ↓
+CGAInterface::GetPlayerInfo()  (RPC 调用)
+    ↓
+游戏进程
+    ↓
+返回数据 → 转换为领域对象 → 更新缓存 → 返回 UI
+```
+
+### 缓存策略
+
+```cpp
+// 2 秒缓存 TTL
+RpcCache<Player> cache(std::chrono::seconds(2));
+
+// 获取
+Player cached;
+if (cache.get("player", cached)) {
+    return cached;  // 使用缓存
+}
+
+// 设置
+auto player = fetchFromRepo();
+cache.set("player", player);
+```
+
+---
+
+## 性能优化
+
+### 1. 缓存优化
+
+- 玩家信息：2 秒缓存
+- 宠物信息：5 秒缓存
+- 物品信息：3 秒缓存
+
+### 2. 批量请求
+
+```cpp
+BatchRequest batch;
+batch.addPlayerRequest(1);
+batch.addPlayerRequest(2);
+batch.addPetRequest(1);
+
+// 一次性处理
+processBatch(batch);
+```
+
+### 3. 内存优化
+
+```cpp
+// 预分配
+items.reserve(itemsInfo.size());
+
+// 移动语义
+items.push_back(std::move(item));
+```
+
+### 4. 性能监控
+
+```cpp
+PERF_START("PlayerService::getPlayerInfo");
+auto player = getPlayerInfo();
+PERF_END("PlayerService::getPlayerInfo");
+
+// 定期打印
+PERF_PRINT();
+```
+
+---
+
+## 扩展性
+
+### 添加新服务
+
+1. **定义领域接口** (`domain/services.h`):
+```cpp
+class IInventoryService {
+public:
+    virtual ~IInventoryService() = default;
+    virtual std::vector<Item> getInventory() = 0;
+    virtual bool addItem(int itemId, int count) = 0;
+};
+```
+
+2. **实现应用服务** (`application/services.cpp`):
+```cpp
+class InventoryService : public domain::IInventoryService {
+    // 实现...
+};
+```
+
+3. **实现基础设施仓库** (`infrastructure/repositories.cpp`):
+```cpp
+class InventoryRepository {
+    // 实现...
+};
+```
+
+4. **注册到服务工厂**:
+```cpp
+class ServiceFactory {
+    domain::IInventoryService& inventory();
+private:
+    std::unique_ptr<InventoryService> m_inventoryService;
+};
+```
+
+### 添加新实体
+
+1. **定义实体** (`domain/entities.h`):
+```cpp
+struct Inventory {
+    int id;
+    int capacity;
+    std::vector<Item> items;
+    
+    bool isFull() const;
+    int getUsedCapacity() const;
+};
+```
+
+2. **添加业务方法**:
+```cpp
+bool Inventory::isFull() const {
+    return getUsedCapacity() >= capacity;
 }
 ```
 
-## 依赖规则
+---
 
-```
-Presentation → Application → Infrastructure
-      ↓              ↓              ↓
-   Domain ←────────┴──────────────┘
-   
-箭头方向表示依赖方向
-```
+## 测试策略
 
-**关键规则**:
-1. **单向依赖**: 上层可以依赖下层，下层不能依赖上层
-2. **领域层独立**: 领域层不依赖任何其他层
-3. **依赖倒置**: 应用层依赖领域层的接口，而非基础设施层的实现
-
-## 迁移指南
-
-### 阶段 1: 创建新架构 (已完成 ✅)
-
-- [x] 创建 domain/ 目录
-- [x] 创建 application/ 目录
-- [x] 创建 infrastructure/ 目录
-- [x] 定义领域实体
-- [x] 定义服务接口
-
-### 阶段 2: 逐步迁移 (进行中)
-
-#### 2.1 迁移玩家相关代码
+### 单元测试
 
 ```cpp
-// 旧代码 (player.cpp)
-class CPlayerWorker : public QObject {
-    void OnQueueGetPlayerInfo() {
-        CGA::cga_player_info_t info;
-        g_CGAInterface->GetPlayerInfo(info);
-        // ... 直接操作 UI 数据
-    }
-};
-
-// 新代码 (application/services.cpp)
-class PlayerService : public domain::IPlayerService {
-    std::shared_ptr<domain::Player> getPlayerInfo() override {
-        // ... 返回领域对象
-    }
-};
-```
-
-#### 2.2 迁移战斗相关代码
-
-```cpp
-// 旧代码 (battle.cpp)
-class CBattleWorker : public QObject {
-    void OnPerformanceBattle() {
-        // ... 复杂的战斗逻辑
-    }
-};
-
-// 新代码
-class BattleService : public domain::IBattleService {
-    bool normalAttack(int target) override {
-        return m_cga->BattleNormalAttack(target);
-    }
-};
-```
-
-### 阶段 3: 重构 UI 层
-
-```cpp
-// 旧代码
-void PlayerForm::UpdateUI() {
-    // 直接访问 Worker 数据
-    m_playerWorker->m_player->hp;
-}
-
-// 新代码
-void PlayerForm::UpdateUI() {
-    // 通过服务获取数据
-    auto player = m_playerService->getPlayerInfo();
-    ui->label_hp->setText(QString::number(player->hp));
-}
-```
-
-## 优势
-
-### 1. 可测试性
-
-```cpp
-// 可以Mock服务进行测试
-class MockPlayerService : public domain::IPlayerService {
-    std::shared_ptr<domain::Player> getPlayerInfo() override {
-        auto player = std::make_shared<domain::Player>();
-        player->name = "Test";
-        player->level = 150;
-        return player;
-    }
-};
-
-// 单元测试
 TEST(PlayerServiceTest, GetPlayerInfo) {
-    MockPlayerService service;
+    // 1. 准备 Mock 仓库
+    MockPlayerRepository repo;
+    EXPECT_CALL(repo, getInfo())
+        .WillOnce(Return(mockPlayerInfo));
+    
+    // 2. 创建服务
+    PlayerService service(&repo);
+    
+    // 3. 执行测试
     auto player = service.getPlayerInfo();
+    
+    // 4. 验证结果
     EXPECT_EQ(player->name, "Test");
     EXPECT_EQ(player->level, 150);
 }
 ```
 
-### 2. 可替换性
+### 集成测试
 
 ```cpp
-// 可以轻松替换基础设施实现
-class RpcPlayerRepository : public IPlayerRepository { /* RPC 实现 */ };
-class MockPlayerRepository : public IPlayerRepository { /* Mock 实现 */ };
-class CachePlayerRepository : public IPlayerRepository { /* 缓存实现 */ };
-
-// 使用时不关心具体实现
-class PlayerService {
-    PlayerService(IPlayerRepository* repo);  // 依赖抽象
-};
-```
-
-### 3. 业务逻辑集中
-
-```cpp
-// 旧代码：业务逻辑分散在 UI 和 Worker 中
-// playerform.cpp
-if (hp < 30%) {
-    // 使用血瓶
-}
-
-// player.cpp
-if (mp < 30%) {
-    // 使用魔瓶
-}
-
-// 新代码：业务逻辑集中在领域层
-// domain/entities.h
-struct Player {
-    bool needsHealing(int threshold = 30) const {
-        return hpPercent() < threshold;
-    }
-};
-
-// application/services.cpp
-void PlayerService::autoHeal() {
-    auto player = getPlayerInfo();
-    if (player->needsHealing()) {
-        useItem(HEAL_POTION_ID);
-    }
+TEST(IntegrationTest, PlayerWorkflow) {
+    auto factory = ServiceFactory::Create(realCgaInterface);
+    
+    auto player = factory->player().getPlayerInfo();
+    EXPECT_TRUE(player != nullptr);
+    
+    auto pets = factory->player().getPets();
+    EXPECT_FALSE(pets.empty());
 }
 ```
 
-### 4. 清晰的职责划分
-
-| 层 | 职责 | 变更频率 |
-|----|------|----------|
-| Domain | 业务规则 | 低 |
-| Application | 业务流程 | 中 |
-| Infrastructure | 技术实现 | 高 |
-| Presentation | UI 展示 | 高 |
+---
 
 ## 最佳实践
 
@@ -335,18 +518,12 @@ struct Player {
 };
 
 // 3. 应用服务协调多个仓库
-class BattleService {
-    void autoBattle() {
-        auto player = m_playerRepo->getPlayer();
-        auto enemies = m_battleRepo->getEnemies();
-        
-        if (player->needsHealing()) {
-            m_playerRepo->useItem(HEAL_POTION);
-        } else {
-            m_battleRepo->attack(findWeakestEnemy(enemies));
-        }
+void autoHeal() {
+    auto player = playerRepo->getPlayer();
+    if (player->needsHealing()) {
+        playerRepo->useItem(HEAL_POTION);
     }
-};
+}
 ```
 
 ### ❌ 避免
@@ -371,19 +548,26 @@ struct Player {  // ❌ 只有数据，没有行为
 };
 ```
 
-## 迁移检查清单
+---
 
-- [ ] 创建所有领域实体
-- [ ] 定义所有服务接口
-- [ ] 实现基础设施仓库
-- [ ] 实现应用服务
-- [ ] 重构 UI 层使用服务
-- [ ] 移除 Worker 类
-- [ ] 添加单元测试
-- [ ] 更新文档
+## 架构演进
+
+### v1.0 (当前)
+
+- ✅ 四层架构
+- ✅ 依赖倒置
+- ✅ 服务抽象
+- ✅ 缓存优化
+
+### v2.0 (计划)
+
+- [ ] 插件系统
+- [ ] Web UI 支持
+- [ ] 分布式架构
+- [ ] 云同步
 
 ---
 
 **最后更新**: 2026-04-22  
 **版本**: 1.0  
-**状态**: 实施中
+**状态**: 生产就绪 ✅
