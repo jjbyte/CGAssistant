@@ -20,10 +20,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gameinterface.cpp" />
+    <ClCompile Include="logger.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="gameinterface.h" />
     <ClInclude Include="packdata.h" />
+    <ClInclude Include="logger.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{85FCBAC1-6F19-4754-B277-97E6386F6D51}</ProjectGuid>

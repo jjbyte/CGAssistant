@@ -1,4 +1,5 @@
 #include "player.h"
+#include "../CGALib/logger.h"
 #include <QTimer>
 #include <QDateTime>
 #include <QRegularExpression>
@@ -396,6 +397,8 @@ void CPlayerWorker::OnQueueGetPlayerInfo()
 
     if(g_CGAInterface->IsConnected() && g_CGAInterface->IsInGame(ingame) && ingame)
     {
+        LOG_DEBUG("玩家数据轮询 - 游戏中状态");
+        
         //syncronize value
         g_CGAInterface->SetMoveSpeed(m_MoveSpeed);
         g_CGAInterface->SetWorkDelay(m_WorkDelay);
@@ -422,11 +425,16 @@ void CPlayerWorker::OnQueueGetPlayerInfo()
             player->unitid = info.unitid;
             player->punchclock = info.punchclock;
             player->usingpunchclock = info.usingpunchclock;
+            
+            LOG_TRACE("玩家信息：{} Lv{} HP:{}/{} MP:{}/{} 金币:{}", 
+                     info.name.c_str(), info.level, info.hp, info.maxhp, 
+                     info.mp, info.maxmp, info.gold);
         }
 
         if(g_CGAInterface->GetMapIndex(index1, index2, index3))
         {
             player->serverindex = index2;
+            LOG_TRACE("地图索引：{} {} {}", index1, index2, index3);
         }
 
         CGA::cga_pets_info_t petsinfo;

@@ -12,6 +12,7 @@
 #include "qhttpserverrequest.hpp"
 
 #include "../CGALib/gameinterface.h"
+#include "../CGALib/logger.h"
 #include "player.h"
 
 CGA::CGAInterface *g_CGAInterface = NULL;
@@ -23,6 +24,12 @@ CGA::CGAInterface *g_CGAInterface = NULL;
 
 LONG WINAPI MinidumpCallback(EXCEPTION_POINTERS* pException)
 {
+    // 记录崩溃信息到日志
+    LOG_CRITICAL("========================================");
+    LOG_CRITICAL("程序发生严重异常，正在生成崩溃转储...");
+    LOG_CRITICAL("异常代码：0x%08X", pException ? pException->ExceptionRecord->ExceptionCode : 0);
+    LOG_CRITICAL("异常地址：0x%p", pException ? pException->ExceptionRecord->ExceptionAddress : nullptr);
+    
     HANDLE hDumpFile = CreateFile(L"minidump.mdmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (hDumpFile != INVALID_HANDLE_VALUE) {
 
@@ -33,17 +40,34 @@ LONG WINAPI MinidumpCallback(EXCEPTION_POINTERS* pException)
 
         MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile, (MINIDUMP_TYPE)(MiniDumpNormal | MiniDumpWithFullMemory), &dumpInfo, NULL, NULL);
         CloseHandle(hDumpFile);
+        
+        LOG_CRITICAL("崩溃转储已保存：minidump.mdmp");
+    } else {
+        LOG_CRITICAL("崩溃转储保存失败，错误代码：%lu", GetLastError());
     }
-
-    //MessageBox(NULL, L"A fatal error occured, sorry but we have to terminate this program.\nSee minidump for more information.", L"Fatal Error", MB_ICONWARNING);
+    LOG_CRITICAL("========================================");
+    
+    // 刷新日志确保写入
+    cga::Logger::Flush();
 
     return EXCEPTION_EXECUTE_HANDLER;
 }
 
 int main(int argc, char *argv[])
 {
+    // 初始化日志系统
+    cga::Logger::Init("logs", spdlog::level::debug);
+    LOG_INFO("========================================");
+    LOG_INFO("CGAssistant 启动");
+    LOG_INFO("版本：1.0.0");
+    LOG_INFO("启动时间：{}", __DATE__ " " __TIME__);
+    LOG_INFO("========================================");
+    
     QApplication a(argc, argv);
 
+    LOG_DEBUG("Qt 应用程序已创建");
+    LOG_DEBUG("命令行参数数量：{}", argc);
+    
     qsrand(QTime(0,0,0).secsTo(QTime::currentTime()) + QCoreApplication::applicationPid());
 
     qputenv("CGA_DIR_PATH", QCoreApplication::applicationDirPath().toLocal8Bit());
@@ -300,5 +324,15 @@ int main(int argc, char *argv[])
 
     w.NotifyFillLoadSettings(parser.value(loadsettings));
 
-    return a.exec();
+    LOG_INFO("主窗口已显示，进入事件循环");
+    
+    int ret = a.exec();
+    
+    LOG_INFO("应用程序退出，返回码：{}", ret);
+    LOG_INFO("正在关闭日志系统...");
+    
+    // 关闭日志系统
+    cga::Logger::Shutdown();
+    
+    return ret;
 }

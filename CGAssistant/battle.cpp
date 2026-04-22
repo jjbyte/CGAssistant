@@ -4,6 +4,7 @@
 #include <Windows.h>
 
 #include "battle.h"
+#include "../CGALib/logger.h"
 
 extern CGA::CGAInterface *g_CGAInterface;
 extern QString s_BattleCondType[BattleCond_Type_Max];
@@ -3948,6 +3949,12 @@ void CBattleWorker::OnNotifyBattleAction(int flags)
 
     if((flags & FL_BATTLE_ACTION_END) || (flags & FL_BATTLE_ACTION_BEGIN))
     {
+        if(flags & FL_BATTLE_ACTION_BEGIN) {
+            LOG_INFO("========== 战斗开始 ==========");
+        } else {
+            LOG_INFO("========== 战斗结束 ==========");
+        }
+        
         m_BattleContext.m_iLastRound = -1;
         m_BattleContext.m_iMagicSealingRound = -1;
         m_BattleContext.m_bRoundZeroNotified = false;
@@ -4003,7 +4010,13 @@ void CBattleWorker::OnNotifyBattleAction(int flags)
 
     if(m_bAutoBattle)
     {
+        LOG_DEBUG("战斗回合：{} 玩家状态：{} 宠物状态：{}", 
+                 m_BattleContext.m_iRoundCount, 
+                 m_BattleContext.m_iPlayerStatus,
+                 m_BattleContext.m_iPetPosition);
+        
         if(CheckProtect()){
+            LOG_WARN("触发保护机制 - 遇敌保护或 BOSS 保护");
             if(m_bBeep)
             {
                 QString beep = QCoreApplication::applicationDirPath();
