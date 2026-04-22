@@ -368,6 +368,42 @@ auto mapForm = new MapForm();
 
 ---
 
-**最后更新**: 2026-04-22 21:45  
+### 聊天模块 (30% 完成)
+
+**已完成**:
+- [x] chatform.h - 添加 ServiceFactory 成员
+- [x] chatform.h - 添加 InitializeWithServices 方法
+- [x] chatform.cpp - 实现 InitializeWithServices
+- [x] chatform.cpp - SendMessageNew 方法
+
+**待完成**:
+- [ ] OnNotifyChatMsg 支持双架构
+- [ ] OnNotifyGetPlayerInfo 支持双架构
+- [ ] 使用 ChatService 替代直接调用
+
+### 物品模块 (0% 完成)
+
+**待完成**:
+- [ ] itemform.h - 添加服务工厂支持
+- [ ] itemform.cpp - 使用 ItemService
+- [ ] 测试物品管理功能
+
+### 脚本模块 (0% 完成)
+
+**待完成**:
+- [ ] scriptform.h - 添加服务工厂支持
+- [ ] scriptform.cpp - 使用新服务
+- [ ] 测试脚本执行功能
+
+### 账号模块 (0% 完成)
+
+**待完成**:
+- [ ] accountform.h - 添加服务工厂支持
+- [ ] accountform.cpp - 使用新服务
+- [ ] 测试账号管理功能
+
+---
+
+**最后更新**: 2026-04-22 21:50  
 **状态**: 阶段 2 (进行中)  
-**完成度**: 35%
+**完成度**: 40%
