@@ -1,4 +1,6 @@
 #include "mapform.h"
+#include "application/service_factory.h"
+#include "domain/entities.h"
 #include "../CGALib/logger.h"
 #include "ui_mapform.h"
 
@@ -10,13 +12,20 @@ extern CGA::CGAInterface *g_CGAInterface;
 
 MapForm::MapForm(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::MapForm)
+    ui(new Ui::MapForm),
+    m_serviceFactory(nullptr)
 {
     ui->setupUi(this);
 
     connect(ui->widget_paintmap, &MyPaintMap::updateMousePosition, this, &MapForm::UpdateMousePosition);
     connect(ui->widget_paintmap, &MyPaintMap::runNavigatorScript, this, &MapForm::RunNavigatorScript);
     connect(ui->widget_paintmap, &MyPaintMap::stopNavigatorScript, this, &MapForm::StopNavigatorScript);
+}
+
+void MapForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    LOG_INFO("MapForm 已使用新架构初始化");
 }
 
 MapForm::~MapForm()
@@ -103,6 +112,13 @@ void MapForm::OnNotifyGetMapCellInfo(QSharedPointer<CGA_MapCellData_t> coll, QSh
 
 void MapForm::OnNotifyGetMapInfo(QString name, int index1, int index2, int index3, int x, int y, int worldstatus, int gamestatus)
 {
+    // 如果使用了新架构，跳过旧架构的处理
+    if (m_serviceFactory) {
+        UpdateMapInfoNew();
+        return;
+    }
+    
+    // 旧架构处理逻辑
     ui->widget_paintmap->m_bShowCrosshair = ui->checkBox_showcrosshair->isChecked();
 
     LOG_TRACE("地图信息更新 - 名称：{} 坐标：({}, {}) 索引：{} 世界状态：{}", 
@@ -133,4 +149,32 @@ void MapForm::on_pushButton_loadmap_clicked()
     {
         RequestDownloadMap(m_collision->xsize, m_collision->ysize);
     }
+}
+
+// ============================================================================
+// 新架构方法实现
+// ============================================================================
+
+void MapForm::UpdateMapInfoNew()
+{
+    if (!m_serviceFactory) {
+        return;
+    }
+    
+    auto& map = m_serviceFactory->map();
+    
+    // 获取地图信息
+    auto mapName = map.getMapName();
+    auto [x, y] = map.getPosition();
+    
+    // 更新 UI
+    ui->label_mapname->setText(mapName);
+    ui->label_xy->setText(tr("player at (%1, %2)").arg(x).arg(y));
+    
+    // 获取地图单位
+    auto units = map.getMapUnits();
+    // 可以在这里更新地图显示
+    
+    LOG_DEBUG("地图信息更新 (新架构): {} ({}, {})", 
+             mapName.toStdString(), x, y);
 }
