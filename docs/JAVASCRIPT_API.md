@@ -138,13 +138,23 @@ cga.log(" " + time.hours + ":" + time.mins + ":" + time.secs);
 
 ### cga.LogBack()
 
-返回登录界面。
+返回登录界面/回城。
 
 **返回**: `boolean`
 
+**说明**: 
+- 游戏中使用可返回登录界面
+- 在城内使用可回到主城登录点
+
 **示例**:
 ```javascript
+// 返回登录界面
 cga.LogBack();
+
+// 回城 (在城内使用)
+if (cga.IsInGame()) {
+    cga.LogBack();
+}
 ```
 
 ---
