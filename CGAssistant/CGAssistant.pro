@@ -39,8 +39,10 @@ SOURCES += main.cpp\
     application/services.h \
     application/service_factory.cpp \
     application/service_factory.h \
+    application/services_optimized.cpp \
     infrastructure/repositories.cpp \
-    infrastructure/repositories.h
+    infrastructure/repositories.h \
+    optimization/performance.h
 
 HEADERS  += mainwindow.h \
     scriptform.h \
