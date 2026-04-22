@@ -5,8 +5,16 @@
 #include <QMenu>
 #include <QHash>
 #include <QStandardItemModel>
+#include <memory>
 #include "itemdropper.h"
 #include "itemtweaker.h"
+
+// 前向声明 - 新架构
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+}
 
 namespace Ui {
 class ItemForm;
@@ -21,6 +29,11 @@ class ItemForm : public QWidget
 public:
     explicit ItemForm(CPlayerWorker *worker, QWidget *parent = 0);
     ~ItemForm();
+    
+    /**
+     * @brief 使用新架构初始化
+     */
+    void InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory);
 
 signals:
     void QueueDropItem(int itempos, int itemid);
@@ -44,15 +57,24 @@ private slots:
 private:
     void GetRowColumnFromItemPos(int itempos, int &row, int &col);
     bool GetItemTips(int itemid, QString &str);
+    
 private:
     Ui::ItemForm *ui;
+    
+    // 旧架构 (向后兼容)
     CPlayerWorker *m_worker;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
+    
     QStandardItemModel *m_model_Item;
     QMenu *m_item_Menu;
     QHash<int, QString> m_IdMap;
+    
 public:
     CItemDropperModel *m_model_Drop;
     CItemTweakerModel *m_model_Tweaker;
+    
 public slots:
     bool ParseItemTweaker(const QJsonValue &val);
     bool ParseItemDropper(const QJsonValue &val);
@@ -60,6 +82,10 @@ public slots:
     void SaveItemDropper(QJsonArray &arr);
     void SaveItemTweaker(QJsonArray &arr);
     void SaveItemIdMap(QJsonObject &obj);
+    
+private:
+    // 新架构方法
+    void UpdateItemsInfoNew();
 };
 
 #endif // ITEMFORM_H

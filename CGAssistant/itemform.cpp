@@ -1,4 +1,6 @@
 #include "itemform.h"
+#include "application/service_factory.h"
+#include "domain/entities.h"
 #include "../CGALib/logger.h"
 #include "ui_itemform.h"
 #include <QMessageBox>
@@ -12,7 +14,9 @@
 
 ItemForm::ItemForm(CPlayerWorker *worker, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::ItemForm),  m_worker(worker)
+    ui(new Ui::ItemForm),
+    m_worker(worker),
+    m_serviceFactory(nullptr)
 {
     ui->setupUi(this);
 
@@ -41,6 +45,12 @@ ItemForm::ItemForm(CPlayerWorker *worker, QWidget *parent) :
     connect(ui->listView_tweak, &MyListView::NotifyDeletePressed, this, &ItemForm::OnItemTweakerDeletePressed);
 
     m_item_Menu = new QMenu(this);
+}
+
+void ItemForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    LOG_INFO("ItemForm 已使用新架构初始化");
 }
 
 ItemForm::~ItemForm()
@@ -89,6 +99,13 @@ bool ItemForm::GetItemTips(int itemid, QString &str)
 
 void ItemForm::OnNotifyGetItemsInfo(QSharedPointer<CGA_ItemList_t> items)
 {
+    // 如果使用了新架构，跳过旧架构的处理
+    if (m_serviceFactory) {
+        UpdateItemsInfoNew();
+        return;
+    }
+    
+    // 旧架构处理逻辑
     LOG_TRACE("物品信息更新 - 物品数量：{}", items->size());
     
     int row, col;
@@ -457,4 +474,55 @@ void ItemForm::SaveItemIdMap(QJsonObject &obj)
 void ItemForm::on_lineEdit_tweak_returnPressed()
 {
      AddItemTweaker(ui->lineEdit_tweak->text());
+}
+
+// ============================================================================
+// 新架构方法实现
+// ============================================================================
+
+void ItemForm::UpdateItemsInfoNew()
+{
+    if (!m_serviceFactory) {
+        return;
+    }
+    
+    auto& player = m_serviceFactory->player();
+    auto items = player.getItems();
+    
+    int row, col;
+    for(int i = 0; i < 40; ++i) {
+        GetRowColumnFromItemPos(i, row, col);
+        QStandardItem *qItem = m_model_Item->item(row, col);
+        if(qItem) {
+            qItem->setText(QLatin1String(""));
+            qItem->setData(QVariant(false), Qt::UserRole + 10083);
+        }
+    }
+    
+    for(const auto& item : items) {
+        if(item.pos < 8)
+            continue;
+            
+        GetRowColumnFromItemPos(item.pos - 8, row, col);
+        QStandardItem *qItem = m_model_Item->item(row, col);
+        if(qItem) {
+            QString str;
+            if(item.count > 0)
+                str = QString("%1 x %2\n#%3 @%4")
+                    .arg(item.name)
+                    .arg(item.count)
+                    .arg(item.itemId)
+                    .arg(item.type);
+            else
+                str = QString("%1\n#%2 @%3")
+                    .arg(item.name)
+                    .arg(item.itemId)
+                    .arg(item.type);
+            
+            qItem->setText(str);
+            qItem->setData(QVariant(true), Qt::UserRole + 10083);
+        }
+    }
+    
+    LOG_DEBUG("物品信息已更新 (新架构)");
 }
