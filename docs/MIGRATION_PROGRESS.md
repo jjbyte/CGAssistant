@@ -404,6 +404,34 @@ auto mapForm = new MapForm();
 
 ---
 
-**最后更新**: 2026-04-22 21:50  
+### 物品模块 (25% 完成)
+
+**已完成**:
+- [x] itemform.h - 添加 ServiceFactory 成员
+- [x] itemform.h - 添加 InitializeWithServices 方法
+- [x] itemform.cpp - 实现 InitializeWithServices
+- [x] itemform.cpp - UpdateItemsInfoNew 方法
+
+**待完成**:
+- [ ] 完善物品操作功能
+- [ ] 测试物品管理
+
+### 脚本模块 (0% 完成)
+
+**待完成**:
+- [ ] scriptform.h - 添加服务工厂支持
+- [ ] scriptform.cpp - 使用新服务
+- [ ] 测试脚本执行功能
+
+### 账号模块 (0% 完成)
+
+**待完成**:
+- [ ] accountform.h - 添加服务工厂支持
+- [ ] accountform.cpp - 使用新服务
+- [ ] 测试账号管理功能
+
+---
+
+**最后更新**: 2026-04-22 21:55  
 **状态**: 阶段 2 (进行中)  
-**完成度**: 40%
+**完成度**: 45%
