@@ -2,6 +2,8 @@
 #include <rest_rpc/client.hpp>
 #include <rest_rpc/server.hpp>
 #include "gameinterface.h"
+#include "rpc_config.h"
+#include "logger.h"
 #include "packdata.h"
 
 namespace CGAServiceProtocol
@@ -172,67 +174,203 @@ namespace CGA
 
 			if (!m_connected)
 			{
-				try
-				{
-					m_connected = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::Connect);
+				LOG_INFO("正在连接 RPC 服务器 - 端口：{} 超时：{}ms", port, cga::RpcConfig::CONNECT_TIMEOUT_MS);
+				
+				// 带重试的连接
+				for (int retry = 0; retry < cga::RpcConfig::MAX_CONNECTION_ATTEMPTS; ++retry) {
+					try
+					{
+						auto timeout = std::chrono::milliseconds(cga::RpcConfig::CONNECT_TIMEOUT_MS);
+						m_connected = m_client.call(timeout, m_endpoint, CGAServiceProtocol::Connect);
+						
+						if (m_connected) {
+							LOG_INFO("RPC 连接成功 - 端口：{}", port);
+							return true;
+						}
+					}
+					catch (timax::rpc::exception const &e) {
+						LOG_WARN("RPC 连接失败 (尝试 {}/{}) - 错误：{}", 
+								retry + 1, cga::RpcConfig::MAX_CONNECTION_ATTEMPTS, e.get_error_message());
+						
+						if (retry < cga::RpcConfig::MAX_CONNECTION_ATTEMPTS - 1) {
+							int delay = cga::RpcConfig::CONNECTION_RETRY_DELAY_MS * (retry + 1);
+							LOG_DEBUG("等待 {}ms 后重试...", delay);
+							Sleep(delay);
+						}
+					}
+					catch (msgpack::parse_error &e) {
+						LOG_ERROR("RPC 解析错误 - {}", e.what());
+						OutputDebugStringA("parse exception from " __FUNCTION__);
+						OutputDebugStringA(e.what());
+						break;  // 解析错误不重试
+					}
 				}
-				catch (timax::rpc::exception const &e) { m_connected = false; }
-				catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
+				
+				LOG_ERROR("RPC 连接失败 - 端口：{} 已达到最大重试次数", port);
+				m_connected = false;
 			}
 			return m_connected;
 		}
 		virtual bool Initialize(cga_game_data_t &data) {
 			if (m_connected) {
-				try {
-					m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::Initialize, data);
-					return true;
+				for (int retry = 0; retry < cga::RpcConfig::MAX_RETRY_COUNT; ++retry) {
+					try {
+						auto timeout = std::chrono::milliseconds(cga::RpcConfig::CONNECT_TIMEOUT_MS);
+						m_client.call(timeout, m_endpoint, CGAServiceProtocol::Initialize, data);
+						LOG_DEBUG("RPC 调用成功 - Initialize");
+						return true;
+					}
+					catch (timax::rpc::exception const &e) {
+						if (e.get_error_code() == timax::rpc::error_code::TIMEOUT) {
+							LOG_WARN("RPC 调用超时 (尝试 {}/{}) - Initialize", 
+									retry + 1, cga::RpcConfig::MAX_RETRY_COUNT);
+						} else {
+							LOG_ERROR("RPC 调用失败 - Initialize: {}", e.get_error_message());
+							m_connected = false;
+						}
+						OutputDebugStringA("rpc exception from " __FUNCTION__);
+						OutputDebugStringA(e.get_error_message().c_str());
+						
+						if (retry < cga::RpcConfig::MAX_RETRY_COUNT - 1) {
+							int delay = cga::RpcConfig::GetRetryDelay(retry);
+							Sleep(delay);
+						}
+					}
+					catch (msgpack::parse_error &e) {
+						LOG_ERROR("RPC 解析错误 - Initialize: {}", e.what());
+						OutputDebugStringA("parse exception from " __FUNCTION__);
+						OutputDebugStringA(e.what());
+						break;
+					}
 				}
-				catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
-				catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
 			}
 			return false;
 		}
 		virtual bool IsInGame(int &ingame) {
 			if (m_connected) {
-				try {
-					ingame = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::IsInGame);
-					return true;
+				for (int retry = 0; retry < cga::RpcConfig::MAX_RETRY_COUNT; ++retry) {
+					try {
+						auto timeout = std::chrono::milliseconds(cga::RpcConfig::DEFAULT_TIMEOUT_MS);
+						ingame = m_client.call(timeout, m_endpoint, CGAServiceProtocol::IsInGame);
+						return true;
+					}
+					catch (timax::rpc::exception const &e) {
+						if (e.get_error_code() == timax::rpc::error_code::TIMEOUT) {
+							LOG_TRACE("RPC 调用超时 (尝试 {}/{}) - IsInGame", retry + 1, cga::RpcConfig::MAX_RETRY_COUNT);
+						} else {
+							LOG_ERROR("RPC 调用失败 - IsInGame: {}", e.get_error_message());
+							m_connected = false;
+						}
+						OutputDebugStringA("rpc exception from " __FUNCTION__);
+						OutputDebugStringA(e.get_error_message().c_str());
+						
+						if (retry < cga::RpcConfig::MAX_RETRY_COUNT - 1) {
+							Sleep(cga::RpcConfig::GetRetryDelay(retry));
+						}
+					}
+					catch (msgpack::parse_error &e) {
+						LOG_ERROR("RPC 解析错误 - IsInGame: {}", e.what());
+						OutputDebugStringA("parse exception from " __FUNCTION__);
+						OutputDebugStringA(e.what());
+						break;
+					}
 				}
-				catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
-				catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
 			}
 			return false;
 		}
 		virtual bool GetWorldStatus(int &status) {
 			if (m_connected) {
-				try {
-					status = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::GetWorldStatus);
-					return true;
+				for (int retry = 0; retry < cga::RpcConfig::MAX_RETRY_COUNT; ++retry) {
+					try {
+						auto timeout = std::chrono::milliseconds(cga::RpcConfig::DEFAULT_TIMEOUT_MS);
+						status = m_client.call(timeout, m_endpoint, CGAServiceProtocol::GetWorldStatus);
+						return true;
+					}
+					catch (timax::rpc::exception const &e) {
+						if (e.get_error_code() == timax::rpc::error_code::TIMEOUT) {
+							LOG_TRACE("RPC 调用超时 (尝试 {}/{}) - GetWorldStatus", retry + 1, cga::RpcConfig::MAX_RETRY_COUNT);
+						} else {
+							LOG_ERROR("RPC 调用失败 - GetWorldStatus: {}", e.get_error_message());
+							m_connected = false;
+						}
+						OutputDebugStringA("rpc exception from " __FUNCTION__);
+						OutputDebugStringA(e.get_error_message().c_str());
+						
+						if (retry < cga::RpcConfig::MAX_RETRY_COUNT - 1) {
+							Sleep(cga::RpcConfig::GetRetryDelay(retry));
+						}
+					}
+					catch (msgpack::parse_error &e) {
+						LOG_ERROR("RPC 解析错误 - GetWorldStatus: {}", e.what());
+						OutputDebugStringA("parse exception from " __FUNCTION__);
+						OutputDebugStringA(e.what());
+						break;
+					}
 				}
-				catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
-				catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
 			}
 			return false;
 		}
 		virtual bool GetGameStatus(int &status) {
 			if (m_connected) {
-				try {
-					status = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::GetGameStatus);
-					return true;
+				for (int retry = 0; retry < cga::RpcConfig::MAX_RETRY_COUNT; ++retry) {
+					try {
+						auto timeout = std::chrono::milliseconds(cga::RpcConfig::DEFAULT_TIMEOUT_MS);
+						status = m_client.call(timeout, m_endpoint, CGAServiceProtocol::GetGameStatus);
+						return true;
+					}
+					catch (timax::rpc::exception const &e) {
+						if (e.get_error_code() == timax::rpc::error_code::TIMEOUT) {
+							LOG_TRACE("RPC 调用超时 (尝试 {}/{}) - GetGameStatus", retry + 1, cga::RpcConfig::MAX_RETRY_COUNT);
+						} else {
+							LOG_ERROR("RPC 调用失败 - GetGameStatus: {}", e.get_error_message());
+							m_connected = false;
+						}
+						OutputDebugStringA("rpc exception from " __FUNCTION__);
+						OutputDebugStringA(e.get_error_message().c_str());
+						
+						if (retry < cga::RpcConfig::MAX_RETRY_COUNT - 1) {
+							Sleep(cga::RpcConfig::GetRetryDelay(retry));
+						}
+					}
+					catch (msgpack::parse_error &e) {
+						LOG_ERROR("RPC 解析错误 - GetGameStatus: {}", e.what());
+						OutputDebugStringA("parse exception from " __FUNCTION__);
+						OutputDebugStringA(e.what());
+						break;
+					}
 				}
-				catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
-				catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
 			}
 			return false;
 		}
 		virtual bool GetBGMIndex(int &status) {
 			if (m_connected) {
-				try {
-					status = m_client.call(std::chrono::milliseconds(10000), m_endpoint, CGAServiceProtocol::GetBGMIndex);
-					return true;
+				for (int retry = 0; retry < cga::RpcConfig::MAX_RETRY_COUNT; ++retry) {
+					try {
+						auto timeout = std::chrono::milliseconds(cga::RpcConfig::DEFAULT_TIMEOUT_MS);
+						status = m_client.call(timeout, m_endpoint, CGAServiceProtocol::GetBGMIndex);
+						return true;
+					}
+					catch (timax::rpc::exception const &e) {
+						if (e.get_error_code() == timax::rpc::error_code::TIMEOUT) {
+							LOG_TRACE("RPC 调用超时 (尝试 {}/{}) - GetBGMIndex", retry + 1, cga::RpcConfig::MAX_RETRY_COUNT);
+						} else {
+							LOG_ERROR("RPC 调用失败 - GetBGMIndex: {}", e.get_error_message());
+							m_connected = false;
+						}
+						OutputDebugStringA("rpc exception from " __FUNCTION__);
+						OutputDebugStringA(e.get_error_message().c_str());
+						
+						if (retry < cga::RpcConfig::MAX_RETRY_COUNT - 1) {
+							Sleep(cga::RpcConfig::GetRetryDelay(retry));
+						}
+					}
+					catch (msgpack::parse_error &e) {
+						LOG_ERROR("RPC 解析错误 - GetBGMIndex: {}", e.what());
+						OutputDebugStringA("parse exception from " __FUNCTION__);
+						OutputDebugStringA(e.what());
+						break;
+					}
 				}
-				catch (timax::rpc::exception const &e) { if (e.get_error_code() != timax::rpc::error_code::TIMEOUT) m_connected = false; OutputDebugStringA("rpc exception from " __FUNCTION__); OutputDebugStringA(e.get_error_message().c_str()); }
-				catch (msgpack::parse_error &e) { OutputDebugStringA("parse exception from " __FUNCTION__); OutputDebugStringA(e.what()); }
 			}
 			return false;
 		}
