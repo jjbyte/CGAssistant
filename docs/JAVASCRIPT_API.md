@@ -161,13 +161,23 @@ if (cga.IsInGame()) {
 
 ### cga.LogOut()
 
-退出游戏。
+返回登录界面。
 
 **返回**: `boolean`
 
+**说明**: 
+- 返回登录界面 (选择角色界面)
+- 与 LogBack() 类似，但更彻底
+
 **示例**:
 ```javascript
+// 返回登录界面
 cga.LogOut();
+
+// 完全退出到登录界面
+if (cga.IsInGame()) {
+    cga.LogOut();
+}
 ```
 
 ---
