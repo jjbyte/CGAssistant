@@ -1,4 +1,6 @@
 #include "chatform.h"
+#include "application/service_factory.h"
+#include "domain/entities.h"
 #include "../CGALib/logger.h"
 #include "ui_chatform.h"
 
@@ -9,7 +11,8 @@ extern CGA::CGAInterface *g_CGAInterface;
 
 ChatForm::ChatForm(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::ChatForm)
+    ui(new Ui::ChatForm),
+    m_serviceFactory(nullptr)
 {
     ui->setupUi(this);
 
@@ -19,6 +22,12 @@ ChatForm::ChatForm(QWidget *parent) :
     QTimer *timer = new QTimer(this);
     connect(timer, SIGNAL(timeout()), this, SLOT(OnTimer()));
     timer->start(1000);
+}
+
+void ChatForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    LOG_INFO("ChatForm 已使用新架构初始化");
 }
 
 ChatForm::~ChatForm()
@@ -47,11 +56,19 @@ void ChatForm::OnTimer()
 
 void ChatForm::on_lineEdit_returnPressed()
 {
-    auto saystring = ui->lineEdit->text().toStdString();
-    int ingame = 0;
-    if(g_CGAInterface->IsInGame(ingame) && ingame){
-        LOG_INFO("发送聊天消息：{}", saystring);
-        g_CGAInterface->SayWords(saystring, 0, 3, 1);
+    auto message = ui->lineEdit->text();
+    
+    // 支持新旧两种架构
+    if (m_serviceFactory) {
+        SendMessageNew(message);
+    } else {
+        // 旧架构
+        auto saystring = message.toStdString();
+        int ingame = 0;
+        if(g_CGAInterface->IsInGame(ingame) && ingame){
+            LOG_INFO("发送聊天消息：{}", saystring);
+            g_CGAInterface->SayWords(saystring, 0, 3, 1);
+        }
     }
 
     ui->lineEdit->setText("");
@@ -222,5 +239,21 @@ void ChatForm::on_checkBox_BlockAllChatMsgs_stateChanged(int state)
             break;
         }
     }
+}
+
+// ============================================================================
+// 新架构方法实现
+// ============================================================================
+
+void ChatForm::SendMessageNew(const QString& message)
+{
+    if (!m_serviceFactory) {
+        return;
+    }
+    
+    auto& chat = m_serviceFactory->chat();
+    chat.sendMessage(message);
+    
+    LOG_INFO("发送聊天消息 (新架构): {}", message.toStdString());
 }
 

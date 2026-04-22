@@ -5,7 +5,15 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <memory>
 #include "player.h"
+
+// 前向声明 - 新架构
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+}
 
 namespace Ui {
 class ChatForm;
@@ -18,6 +26,11 @@ class ChatForm : public QWidget
 public:
     explicit ChatForm(QWidget *parent = nullptr);
     ~ChatForm();
+    
+    /**
+     * @brief 使用新架构初始化
+     */
+    void InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory);
 
 public slots:
     void OnNotifyFillChatSettings(int blockchatmsgs);
@@ -29,14 +42,21 @@ public slots:
 
 private slots:
     void on_lineEdit_returnPressed();
-
     void on_checkBox_BlockAllChatMsgs_stateChanged(int state);
-
     void OnTimer();
+    
 private:
     Ui::ChatForm *ui;
+    
+    // 旧架构 (向后兼容)
     QSharedPointer<CGA_PlayerInfo_t> m_player;
     int m_ChatMaxLines;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
+    
+    // 新架构方法
+    void SendMessageNew(const QString& message);
 };
 
 #endif // CHATFORM_H
