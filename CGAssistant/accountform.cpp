@@ -1,4 +1,5 @@
 #include "accountform.h"
+#include "application/service_factory.h"
 #include "ui_accountform.h"
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -26,7 +27,8 @@ typedef struct
 
 AccountForm::AccountForm(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::AccountForm)
+    ui(new Ui::AccountForm),
+    m_serviceFactory(nullptr)
 {
     ui->setupUi(this);
 
@@ -121,6 +123,12 @@ AccountForm::AccountForm(QWidget *parent) :
 AccountForm::~AccountForm()
 {
     delete ui;
+}
+
+void AccountForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    LOG_INFO("AccountForm 已使用新架构初始化");
 }
 
 bool AccountForm::IsGltExpired()

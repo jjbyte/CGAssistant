@@ -8,6 +8,7 @@
 #include "itemform.h"
 #include "mapform.h"
 #include "chatform.h"
+#include "application/service_factory.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -130,6 +131,17 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::UseNewArchitecture()
+{
+    // 创建服务工厂
+    m_serviceFactory = cga::application::ServiceFactory::Create(g_CGAInterface);
+    
+    // 初始化所有 Form
+    // 注意：需要在 Form 创建后调用
+    // 这里仅作为示例，实际需要在 Form 创建后调用 InitializeWithServices
+    LOG_INFO("已切换到新架构");
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

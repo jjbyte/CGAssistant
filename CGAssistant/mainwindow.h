@@ -4,7 +4,15 @@
 #include <QMainWindow>
 #include <QJsonDocument>
 #include <QThread>
+#include <memory>
 #include "player.h"
+
+// 前向声明
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+}
 
 namespace Ui {
 class MainWindow;
@@ -20,11 +28,20 @@ public:
 
     virtual void closeEvent(QCloseEvent *event);
     virtual void changeEvent(QEvent * event);
+    
+    /**
+     * @brief 切换到新架构
+     */
+    void UseNewArchitecture();
+    
 private:
     Ui::MainWindow *ui;
     QThread m_playerWorkerThread;
     QThread m_processWorkerThread;
     QThread m_battleWorkerThread;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
 
 signals:
     void NotifyCloseWindow();

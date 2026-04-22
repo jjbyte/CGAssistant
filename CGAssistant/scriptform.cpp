@@ -1,4 +1,5 @@
 #include "scriptform.h"
+#include "application/service_factory.h"
 #include "../CGALib/logger.h"
 #include "ui_scriptform.h"
 #include <QFileDialog>
@@ -20,7 +21,8 @@ extern CGA::CGAInterface *g_CGAInterface;
 
 ScriptForm::ScriptForm(QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::ScriptForm)
+    ui(new Ui::ScriptForm),
+    m_serviceFactory(nullptr)
 {
     ui->setupUi(this);
 
@@ -343,6 +345,12 @@ void ScriptForm::OnTimer()
 ScriptForm::~ScriptForm()
 {
     delete ui;
+}
+
+void ScriptForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    LOG_INFO("ScriptForm 已使用新架构初始化");
 }
 
 void ScriptForm::on_pushButton_load_clicked()
