@@ -76,9 +76,19 @@ void ChatForm::on_lineEdit_returnPressed()
 
 void ChatForm::OnNotifyGetPlayerInfo(QSharedPointer<CGA_PlayerInfo_t> player)
 {
-    m_player = player;
-    LOG_TRACE("聊天模块玩家信息更新 - 名称：{} 单位 ID:{}", 
-             player->name.toStdString(), player->unitid);
+    if (m_serviceFactory) {
+        // 新架构 - 从服务获取
+        auto& playerService = m_serviceFactory->player();
+        auto playerInfo = playerService.getPlayerInfo();
+        if (playerInfo) {
+            LOG_TRACE("聊天模块玩家信息更新 (新架构) - 名称：{}", playerInfo->name.toStdString());
+        }
+    } else {
+        // 旧架构
+        m_player = player;
+        LOG_TRACE("聊天模块玩家信息更新 - 名称：{} 单位 ID:{}", 
+                 player->name.toStdString(), player->unitid);
+    }
 }
 
 void ChatForm::OnNotifyFillChatSettings(int blockchatmsgs)

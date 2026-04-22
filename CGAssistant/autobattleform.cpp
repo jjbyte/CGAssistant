@@ -315,23 +315,30 @@ void AutoBattleForm::UpdateBattleSettingsUI()
     
     // 使用新服务获取数据并更新 UI
     auto& player = m_serviceFactory->player();
-    auto& battle = m_serviceFactory->battle();
     
     // 获取技能列表
     auto skills = player.getSkills();
     for (const auto& skill : skills) {
-        // 更新技能下拉框
-        // ... (实现细节)
+        if(BattlePlayerAction_Max + skills.indexOf(skill) < ui->comboBox_playerAction->count()) {
+            ui->comboBox_playerAction->setItemText(BattlePlayerAction_Max + skills.indexOf(skill), skill.name);
+        } else {
+            ui->comboBox_playerAction->addItem(skill.name, QVariant(skill.level));
+        }
     }
     
     // 获取宠物列表
     auto pets = player.getPets();
     for (const auto& pet : pets) {
-        // 更新宠物技能下拉框
-        // ... (实现细节)
+        if(pet.battleFlags & 2) {
+            for(int j = 0; j < pet.skills.size(); ++j) {
+                if(BattlePetAction_Max + j < ui->comboBox_petAction->count()) {
+                    ui->comboBox_petAction->setItemText(BattlePetAction_Max + j, pet.skills[j].name);
+                }
+            }
+        }
     }
     
-    LOG_DEBUG("战斗设置 UI 已更新");
+    LOG_DEBUG("战斗设置 UI 已更新 (新架构)");
 }
 
 void AutoBattleForm::on_horizontalSlider_delayFrom_valueChanged(int value)

@@ -145,8 +145,13 @@ void MapForm::OnCloseWindow()
 
 void MapForm::on_pushButton_loadmap_clicked()
 {
-    if(m_collision)
-    {
+    if (m_serviceFactory) {
+        // 新架构
+        auto& map = m_serviceFactory->map();
+        auto [x, y] = map.getPosition();
+        RequestDownloadMap(51, 51);  // 默认下载 51x51
+    } else if(m_collision) {
+        // 旧架构
         RequestDownloadMap(m_collision->xsize, m_collision->ysize);
     }
 }

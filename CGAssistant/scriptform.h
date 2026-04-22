@@ -3,8 +3,15 @@
 
 #include <QWidget>
 #include <QProcess>
-
 #include <QTime>
+#include <memory>
+
+// 前向声明 - 新架构
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+}
 
 namespace Ui {
 class ScriptForm;
@@ -18,6 +25,12 @@ class ScriptForm : public QWidget
 public:
     explicit ScriptForm(QWidget *parent = 0);
     ~ScriptForm();
+    
+    /**
+     * @brief 使用新架构初始化
+     */
+    void InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory);
+    
     virtual void dragEnterEvent(QDragEnterEvent *event);
     virtual void dropEvent(QDropEvent *event);
     void UpdateGameTextUI(bool show);
@@ -48,24 +61,20 @@ private slots:
 private:
     Ui::ScriptForm *ui;
     QPlainTextEdit *m_output;
-    QString m_scriptPath;
-    QString m_chromePath;
-    QProcess *m_node;
-
-    QString m_PathString;
-    bool m_bPathBegin;
-    bool m_bNavigating;
-    bool m_bListening;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
+    
     bool m_bDebugging;
+    bool m_bListening;
+    bool m_bNavigating;
+    bool m_bPathBegin;
     bool m_bSuspending;
-    quint32 m_port;
-
+    int m_port;
     int m_ConsoleMaxLines;
-
-    int m_LastMapX;
-    int m_LastMapY;
-    int m_LastMapIndex;
+    QProcess *m_node;
     QTime m_LastMapChange;
+    QString m_scriptPath;
 };
 
 #endif // SCRIPTFORM_H

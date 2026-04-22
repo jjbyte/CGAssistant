@@ -349,8 +349,17 @@ void ItemForm::OnDropItemAction()
     auto pAction = qobject_cast<QAction*>(sender());
     int itempos = pAction->property("itempos").toInt();
     int itemid = pAction->property("itemid").toInt();
-    LOG_INFO("手动丢弃物品 - 位置：{} ID:{}", itempos, itemid);
-    QueueDropItem(itempos, itemid);
+    
+    if (m_serviceFactory) {
+        // 新架构
+        auto& player = m_serviceFactory->player();
+        player.dropItem(itempos);
+        LOG_INFO("手动丢弃物品 (新架构) - 位置：{} ID:{}", itempos, itemid);
+    } else {
+        // 旧架构
+        LOG_INFO("手动丢弃物品 - 位置：{} ID:{}", itempos, itemid);
+        QueueDropItem(itempos, itemid);
+    }
 }
 
 void ItemForm::OnAddAutoDropAction()

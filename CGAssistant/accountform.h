@@ -5,6 +5,14 @@
 #include <QProcess>
 #include <QTime>
 #include <windows.h>
+#include <memory>
+
+// 前向声明 - 新架构
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+}
 
 namespace Ui {
 class AccountForm;
@@ -17,6 +25,11 @@ class AccountForm : public QWidget
 public:
     explicit AccountForm(QWidget *parent = nullptr);
     ~AccountForm();
+    
+    /**
+     * @brief 使用新架构初始化
+     */
+    void InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory);
 
     bool QueryAccount(QString &label, QString &errorMsg);
     bool IsGltExpired();
@@ -28,7 +41,6 @@ private slots:
     void on_pushButton_getgid_clicked();    
     void on_pushButton_logingame_clicked();
     void on_checkBox_createChara_stateChanged(int arg1);
-
     void on_horizontalSlider_loginDuration_valueChanged(int value);
 
 public slots:
@@ -48,19 +60,30 @@ signals:
 private:
     Ui::AccountForm *ui;
     QProcess *m_POLCN;
-    QByteArray m_StdOut;
-    int m_serverid;
-    quint32 m_game_pid;
-    quint32 m_game_tid;
-    QString m_glt;
-    QTime m_loginquery;
-    QTime m_loginresult;
-    QTime m_logingame;
-    HANDLE m_polcn_lock;
-    HANDLE m_polcn_map;
-    HANDLE m_glt_lock;
-    HANDLE m_glt_map;
-    int m_login_failure;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
+    
+    QString m_GLA;
+    QString m_GLT;
+    QString m_GID;
+    int m_ServerIndex;
+    int m_BigServerIndex;
+    int m_GameType;
+    bool m_bAutoLogin;
+    bool m_bSkipUpdate;
+    bool m_bAutoChangeServer;
+    bool m_bAutoKillGame;
+    int m_LoginDuration;
+    bool m_bCreateChara;
+    int m_CreateChara_Chara;
+    int m_CreateChara_Eye;
+    int m_CreateChara_Mouth;
+    int m_CreateChara_Color;
+    QString m_CreateChara_Points;
+    QString m_CreateChara_Elements;
+    QString m_CreateChara_Name;
+    QTime m_LastLoginAttempt;
 };
 
 #endif // ACCOUNTFORM_H
