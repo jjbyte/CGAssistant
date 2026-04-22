@@ -2,6 +2,7 @@
 #include <Detours.h>
 #include "gameservice.h"
 #include "commandline.h"
+#include "memscanner.h"
 #include <ddraw.h>
 #include <boost/locale.hpp>
 
@@ -2680,7 +2681,29 @@ void CGAService::Initialize(game_type type)
 
 	m_game_type = type;
 
+	// 初始化内存扫描器
+	if (!cga::MemoryScanner::Initialize(hGameBase)) {
+		OutputDebugStringA("内存扫描器初始化失败\n");
+	}
+
 #define CONVERT_GAMEVAR(type, offset) (type)((ULONG_PTR)hGameBase + offset)
+
+	// 使用特征码扫描查找关键地址 (cg_item_6000 示例)
+	if (m_game_type == cg_item_6000) {
+		// 示例：扫描玩家基址
+		// 指令：8B 0D ?? ?? ?? ??  ->  mov ecx, [playerBase]
+		auto playerBaseMatch = cga::MemoryScanner::ScanPattern("8B 0D ?? ?? ?? ??", "xx??????", 2);
+		if (playerBaseMatch.found) {
+			g_playerBase = reinterpret_cast<playerbase_t**>(
+				*reinterpret_cast<uintptr_t*>(playerBaseMatch.address + playerBaseMatch.offset)
+			);
+			OutputDebugStringA("玩家基址扫描成功\n");
+		} else {
+			// 回退到硬编码地址
+			g_playerBase = CONVERT_GAMEVAR(playerbase_t **, 0xE12C30);
+			OutputDebugStringA("玩家基址扫描失败，使用硬编码地址\n");
+		}
+	}
 
 	if (m_game_type == cg_se_3000)
 	{

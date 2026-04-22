@@ -100,12 +100,14 @@
     <ClCompile Include="gameservice.cpp" />
     <ClCompile Include="Inject.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="memscanner.cpp" />
     <ClCompile Include="server.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="commandline.h" />
     <ClInclude Include="gameservice.h" />
     <ClInclude Include="inject.h" />
+    <ClInclude Include="memscanner.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
