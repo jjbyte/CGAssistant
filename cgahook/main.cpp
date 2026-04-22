@@ -15,7 +15,7 @@ ULONG g_MainThreadId = 0;
 WNDPROC g_OldProc = NULL;
 HANDLE g_hQuitEvent = NULL;
 HANDLE g_hFileMapping = NULL;
-HANDLE g_hPortMutex;
+HANDLE g_hPortMutex = NULL;
 HANDLE g_hDataLock = NULL;
 HANDLE g_hServreThread = NULL;
 char g_BasicWindowTitle[256] = {0};
@@ -436,15 +436,17 @@ extern "C"
 						g_HookRetryCount = 0;
 					}
 				}
-				if (!_wcsicmp(pModuleName, L"cg_se_3000.exe") && !strcmp(szClass, "ħ������"))
+				// 窗口类名：魔力宝贝 (GBK 编码：0xC4A7 0xC1A6 0xB1A6 0xB4B4)
+				static const char GAME_WINDOW_CLASS[] = "\xC4\xA7\xC1\xA6\xB1\xA6\xB4\xB4";
+				if (!_wcsicmp(pModuleName, L"cg_se_3000.exe") && !strcmp(szClass, GAME_WINDOW_CLASS))
 				{
 					//InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_se_3000);
 				}
-				else if (!_wcsicmp(pModuleName, L"cg_item_6000.exe") && !strcmp(szClass, "ħ������"))
+				else if (!_wcsicmp(pModuleName, L"cg_item_6000.exe") && !strcmp(szClass, GAME_WINDOW_CLASS))
 				{
 					InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_item_6000);
 				}
-				else if (!_wcsicmp(pModuleName, L"cg_se_6000.exe") && !strcmp(szClass, "ħ������"))
+				else if (!_wcsicmp(pModuleName, L"cg_se_6000.exe") && !strcmp(szClass, GAME_WINDOW_CLASS))
 				{
 					//InitializeHooks(GetCurrentProcessId(), GetCurrentThreadId(), pMsg->hwnd, CGA::cg_se_6000);
 				}

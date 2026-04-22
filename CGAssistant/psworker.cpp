@@ -63,6 +63,7 @@ bool CProcessWorker::IsProcessAttached(quint32 ProcessId, quint32 ThreadId)
 bool CProcessWorker::InjectByMsgHook(quint32 ThreadId, quint32 hWnd, QString &dllPath, int &errorCode, QString &errorString)
 {
     HMODULE hModule = NULL;
+    HHOOK hHook = NULL;
     do
     {
         hModule = LoadLibraryW((LPCWSTR)dllPath.utf16());
@@ -79,7 +80,7 @@ bool CProcessWorker::InjectByMsgHook(quint32 ThreadId, quint32 hWnd, QString &dl
             break;
         }
 
-        HHOOK hHook = SetWindowsHookExW(WH_GETMESSAGE, (HOOKPROC)pfnProc, hModule, ThreadId);
+        hHook = SetWindowsHookExW(WH_GETMESSAGE, (HOOKPROC)pfnProc, hModule, ThreadId);
         if (!hHook){
             errorCode = GetLastError();
             errorString = tr("InjectByMsgHook failed with SetWindowsHookExW, errorCode: %1").arg(errorCode);
@@ -94,6 +95,9 @@ bool CProcessWorker::InjectByMsgHook(quint32 ThreadId, quint32 hWnd, QString &dl
 
         errorCode = 0;
     } while(0);
+
+    if (hHook)
+        UnhookWindowsHookEx(hHook);
 
     if (hModule)
         FreeLibrary(hModule);

@@ -25,11 +25,13 @@ void LogBack(const Nan::FunctionCallbackInfo<v8::Value>& info)
 	HandleScope handle_scope(isolate);
 	auto context = isolate->GetCurrentContext();
 	
-	if (!g_CGAInterface->LogBack())
+	bool result = g_CGAInterface->LogBack();
+	if (!result)
 	{
 		Nan::ThrowError("RPC Invocation failed.");
 		return;
 	}
+	info.GetReturnValue().Set(result);
 }
 
 void LogOut(const Nan::FunctionCallbackInfo<v8::Value>& info)
@@ -38,11 +40,13 @@ void LogOut(const Nan::FunctionCallbackInfo<v8::Value>& info)
 	HandleScope handle_scope(isolate);
 	auto context = isolate->GetCurrentContext();
 
-	if (!g_CGAInterface->LogOut())
+	bool result = g_CGAInterface->LogOut();
+	if (!result)
 	{
 		Nan::ThrowError("RPC Invocation failed.");
 		return;
 	}
+	info.GetReturnValue().Set(result);
 }
 
 void SayWords(const Nan::FunctionCallbackInfo<v8::Value>& info)

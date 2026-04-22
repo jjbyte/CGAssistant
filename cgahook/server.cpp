@@ -171,6 +171,9 @@ DWORD WINAPI CGAServerThread(LPVOID)
 		{
 			CGA_CreateSharedData(port);
 
+			int retryCount = 0;
+			const int maxRetry = 3;
+			
 			try
 			{
 				server = std::make_shared<server_t>(port, pool_size, std::chrono::seconds{ 15 });
@@ -279,7 +282,6 @@ DWORD WINAPI CGAServerThread(LPVOID)
 				server->register_handler("GetCraftInfo", timax::bind(&CGAService::GetCraftInfo, &g_CGAService));
 				server->register_handler("GetCraftsInfo", timax::bind(&CGAService::GetCraftsInfo, &g_CGAService));
 				server->register_handler("GetCraftStatus", timax::bind(&CGAService::GetCraftStatus, &g_CGAService));
-				server->register_handler("AssessItem", timax::bind(&CGAService::AssessItem, &g_CGAService));
 				server->register_handler("DoRequest", timax::bind(&CGAService::DoRequest, &g_CGAService));
 				server->register_handler("TradeAddStuffs", timax::bind(&CGAService::TradeAddStuffs, &g_CGAService));
 				server->register_handler("IsUIDialogPresent", timax::bind(&CGAService::IsUIDialogPresent, &g_CGAService));
@@ -316,12 +318,16 @@ DWORD WINAPI CGAServerThread(LPVOID)
 			}
 			catch (...)
 			{
-				if (dwWait != WAIT_OBJECT_0)
+				retryCount++;
+				if (dwWait != WAIT_OBJECT_0 && retryCount < maxRetry)
 				{
+					// 重试前短暂等待
+					Sleep(100 * retryCount);
 					continue;
 				}
 				else
 				{
+					// 达到最大重试次数或收到退出信号
 					break;
 				}
 			}

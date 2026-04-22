@@ -1528,6 +1528,9 @@ bool CBattleCondition_EnemyAvgLevel::Check(CGA_BattleContext_t &context, int &co
         count += 1;
     }
 
+    if(count == 0)
+        return false;
+
     float avg = (float)level / count;
 
     switch (m_relation)
@@ -2696,11 +2699,15 @@ bool compareHighHP(const CGA_BattleUnit_t & a, const CGA_BattleUnit_t & b){
 }
 
 bool compareLowHPPercent(const CGA_BattleUnit_t & a, const CGA_BattleUnit_t & b){
-    return (float)a.curhp / (float)a.maxhp < (float)b.curhp / (float)b.maxhp;
+    float aPct = (a.maxhp > 0) ? (float)a.curhp / (float)a.maxhp : 0.0f;
+    float bPct = (b.maxhp > 0) ? (float)b.curhp / (float)b.maxhp : 0.0f;
+    return aPct < bPct;
 }
 
 bool compareHighHPPercent(const CGA_BattleUnit_t & a, const CGA_BattleUnit_t & b){
-    return a.curhp > b.curhp;
+    float aPct = (a.maxhp > 0) ? (float)a.curhp / (float)a.maxhp : 0.0f;
+    float bPct = (b.maxhp > 0) ? (float)b.curhp / (float)b.maxhp : 0.0f;
+    return aPct > bPct;
 }
 
 bool compareLowLv(const CGA_BattleUnit_t & a, const CGA_BattleUnit_t & b){
