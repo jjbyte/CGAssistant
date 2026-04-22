@@ -320,6 +320,54 @@ auto battleForm = new AutoBattleForm(battleWorker, playerWorker);
 
 ---
 
-**最后更新**: 2026-04-22 21:15  
+### 其他模块 (0% 完成)
+
+**待完成**:
+- [ ] chatform.cpp - 使用 ChatService
+- [ ] scriptform.cpp - 使用新服务
+- [ ] itemform.cpp - 使用 ItemService
+- [ ] accountform.cpp - 使用新服务
+
+---
+
+## 快速开始
+
+### 使用新架构
+
+```cpp
+// 1. 在主窗口创建服务工厂
+#include "application/service_factory.h"
+
+auto factory = cga::application::ServiceFactory::Create(g_CGAInterface);
+
+// 2. 初始化各个 Form
+playerForm->InitializeWithServices(factory);
+battleForm->InitializeWithServices(factory);
+mapForm->InitializeWithServices(factory);
+
+// 3. 直接使用服务
+auto& player = factory->player();
+auto playerInfo = player.getPlayerInfo();
+
+auto& battle = factory->battle();
+battle.normalAttack(target);
+
+auto& map = factory->map();
+auto mapName = map.getMapName();
+auto [x, y] = map.getPosition();
+```
+
+### 保持旧架构 (默认)
+
+```cpp
+// 无需修改，现有代码继续工作
+auto playerForm = new PlayerForm(playerWorker, battleWorker);
+auto battleForm = new AutoBattleForm(battleWorker, playerWorker);
+auto mapForm = new MapForm();
+```
+
+---
+
+**最后更新**: 2026-04-22 21:45  
 **状态**: 阶段 2 (进行中)  
-**完成度**: 25%
+**完成度**: 35%
