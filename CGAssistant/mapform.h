@@ -52,7 +52,6 @@ signals:
 private:
     Ui::MapForm *ui;
     
-    // 旧架构 (向后兼容)
     QSharedPointer<CGA_MapCellData_t> m_collision;
     
     // 新架构

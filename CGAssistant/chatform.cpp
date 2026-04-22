@@ -62,7 +62,6 @@ void ChatForm::on_lineEdit_returnPressed()
     if (m_serviceFactory) {
         SendMessageNew(message);
     } else {
-        // 旧架构
         auto saystring = message.toStdString();
         int ingame = 0;
         if(g_CGAInterface->IsInGame(ingame) && ingame){
@@ -84,7 +83,6 @@ void ChatForm::OnNotifyGetPlayerInfo(QSharedPointer<CGA_PlayerInfo_t> player)
             LOG_TRACE("聊天模块玩家信息更新 (新架构) - 名称：{}", playerInfo->name.toStdString());
         }
     } else {
-        // 旧架构
         m_player = player;
         LOG_TRACE("聊天模块玩家信息更新 - 名称：{} 单位 ID:{}", 
                  player->name.toStdString(), player->unitid);
@@ -252,7 +250,6 @@ void ChatForm::on_checkBox_BlockAllChatMsgs_stateChanged(int state)
 }
 
 // ============================================================================
-// 新架构方法实现
 // ============================================================================
 
 void ChatForm::SendMessageNew(const QString& message)

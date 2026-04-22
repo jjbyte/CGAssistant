@@ -160,12 +160,10 @@ void AutoBattleForm::InitializeWithServices(std::shared_ptr<cga::application::Se
     m_serviceFactory = serviceFactory;
     
     // 创建 Worker 适配器保持兼容
-    m_battleAdapter = new cga::BattleWorkerAdapter(
         reinterpret_cast<CGA::CGAInterface*>(serviceFactory.get())
     );
     
     // 连接适配器信号
-    connect(m_battleAdapter, &cga::BattleWorkerAdapter::NotifyBattleAction,
             this, &AutoBattleForm::OnNotifyBattleAction, Qt::QueuedConnection);
     
     LOG_INFO("AutoBattleForm 已使用新架构初始化");
@@ -185,7 +183,6 @@ void AutoBattleForm::SyncAutoBattleWorker()
         battle.setAutoBattle(ui->checkBox_autoBattle->isChecked());
         // 其他设置可以通过服务配置
     } else {
-        // 旧架构 - 保持兼容
         m_worker->m_bAutoBattle = ui->checkBox_autoBattle->isChecked();
         m_worker->m_bHighSpeed = ui->checkBox_highSpeed->isChecked();
         m_worker->m_bFirstRoundNoDelay = ui->checkBox_firstRoundNoDelay->isChecked();
@@ -200,13 +197,11 @@ void AutoBattleForm::SyncAutoBattleWorker()
 
 void AutoBattleForm::OnNotifyGetSkillsInfo(QSharedPointer<CGA_SkillList_t> skills)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdateBattleSettingsUI();
         return;
     }
     
-    // 旧架构处理逻辑
     for(int i = 0;i < skills->size(); ++i)
     {
         const CGA_SkillInfo_t &skill = skills->at(i);
@@ -228,13 +223,11 @@ void AutoBattleForm::OnNotifyGetSkillsInfo(QSharedPointer<CGA_SkillList_t> skill
 
 void AutoBattleForm::OnNotifyGetPetsInfo(QSharedPointer<CGA_PetList_t> pets)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdateBattleSettingsUI();
         return;
     }
     
-    // 旧架构处理逻辑
     for(int i = 0;i < pets->size(); ++i)
     {
         if(pets->at(i).battle_flags & 2)
@@ -288,13 +281,11 @@ void AutoBattleForm::OnNotifyGetPetsInfo(QSharedPointer<CGA_PetList_t> pets)
 
 void AutoBattleForm::OnNotifyGetItemsInfo(QSharedPointer<CGA_ItemList_t> items)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdateBattleSettingsUI();
         return;
     }
     
-    // 旧架构处理逻辑
     m_ItemList = items;
 }
 
@@ -304,7 +295,6 @@ void AutoBattleForm::OnCloseWindow()
 }
 
 // ============================================================================
-// 新架构方法实现
 // ============================================================================
 
 void AutoBattleForm::UpdateBattleSettingsUI()

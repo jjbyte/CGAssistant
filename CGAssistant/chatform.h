@@ -48,7 +48,6 @@ private slots:
 private:
     Ui::ChatForm *ui;
     
-    // 旧架构 (向后兼容)
     QSharedPointer<CGA_PlayerInfo_t> m_player;
     int m_ChatMaxLines;
     

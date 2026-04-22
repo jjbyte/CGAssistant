@@ -99,13 +99,11 @@ bool ItemForm::GetItemTips(int itemid, QString &str)
 
 void ItemForm::OnNotifyGetItemsInfo(QSharedPointer<CGA_ItemList_t> items)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdateItemsInfoNew();
         return;
     }
     
-    // 旧架构处理逻辑
     LOG_TRACE("物品信息更新 - 物品数量：{}", items->size());
     
     int row, col;
@@ -356,7 +354,6 @@ void ItemForm::OnDropItemAction()
         player.dropItem(itempos);
         LOG_INFO("手动丢弃物品 (新架构) - 位置：{} ID:{}", itempos, itemid);
     } else {
-        // 旧架构
         LOG_INFO("手动丢弃物品 - 位置：{} ID:{}", itempos, itemid);
         QueueDropItem(itempos, itemid);
     }
@@ -486,7 +483,6 @@ void ItemForm::on_lineEdit_tweak_returnPressed()
 }
 
 // ============================================================================
-// 新架构方法实现
 // ============================================================================
 
 void ItemForm::UpdateItemsInfoNew()

@@ -40,9 +40,7 @@ SOURCES += main.cpp\
     application/service_factory.cpp \
     application/service_factory.h \
     infrastructure/repositories.cpp \
-    infrastructure/repositories.h \
-    worker_adapters.cpp \
-    worker_adapters.h
+    infrastructure/repositories.h
 
 HEADERS  += mainwindow.h \
     scriptform.h \

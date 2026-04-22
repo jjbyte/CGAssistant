@@ -17,8 +17,6 @@ namespace cga {
     namespace application {
         class ServiceFactory;
     }
-    class PlayerWorkerAdapter;
-    class BattleWorkerAdapter;
 }
 
 namespace Ui {
@@ -77,23 +75,14 @@ signals:
     
 private:
     Ui::PlayerForm *ui;
-
-    // 旧架构 (向后兼容)
-    CPlayerWorker *m_worker;
     
     // 新架构
     std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
-    cga::PlayerWorkerAdapter* m_workerAdapter;
     
     QStandardItemModel *m_model_Pet;
     QStandardItemModel *m_model_Skill;
     int m_ServerIndex;
     qhttp::client::QHttpClient *m_HttpClient;
-    
-    // 新架构方法
-    void UpdatePlayerInfoNew();
-    void UpdatePetsInfoNew();
-    void UpdateSkillsInfoNew();
 };
 
 #endif // PLAYERFORM_H

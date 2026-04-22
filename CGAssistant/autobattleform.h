@@ -13,7 +13,6 @@ namespace cga {
     namespace application {
         class ServiceFactory;
     }
-    class BattleWorkerAdapter;
 }
 
 namespace Ui {
@@ -60,12 +59,10 @@ public slots:
     void SaveBattleSettings(QJsonObject &obj);
     
 private:
-    // 旧架构 (向后兼容)
     CBattleWorker *m_worker;
     
     // 新架构
     std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
-    cga::BattleWorkerAdapter* m_battleAdapter;
     
     Ui::AutoBattleForm *ui;
     CBattleSettingModel *m_model;

@@ -112,13 +112,11 @@ void MapForm::OnNotifyGetMapCellInfo(QSharedPointer<CGA_MapCellData_t> coll, QSh
 
 void MapForm::OnNotifyGetMapInfo(QString name, int index1, int index2, int index3, int x, int y, int worldstatus, int gamestatus)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdateMapInfoNew();
         return;
     }
     
-    // 旧架构处理逻辑
     ui->widget_paintmap->m_bShowCrosshair = ui->checkBox_showcrosshair->isChecked();
 
     LOG_TRACE("地图信息更新 - 名称：{} 坐标：({}, {}) 索引：{} 世界状态：{}", 
@@ -151,13 +149,11 @@ void MapForm::on_pushButton_loadmap_clicked()
         auto [x, y] = map.getPosition();
         RequestDownloadMap(51, 51);  // 默认下载 51x51
     } else if(m_collision) {
-        // 旧架构
         RequestDownloadMap(m_collision->xsize, m_collision->ysize);
     }
 }
 
 // ============================================================================
-// 新架构方法实现
 // ============================================================================
 
 void MapForm::UpdateMapInfoNew()

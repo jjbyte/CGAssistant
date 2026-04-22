@@ -61,7 +61,6 @@ private:
 private:
     Ui::ItemForm *ui;
     
-    // 旧架构 (向后兼容)
     CPlayerWorker *m_worker;
     
     // 新架构

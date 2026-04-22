@@ -13,10 +13,8 @@
 
 PlayerForm::PlayerForm(CPlayerWorker *worker, CBattleWorker *bworker, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::PlayerForm), 
-    m_worker(worker),
-    m_serviceFactory(nullptr),
-    m_workerAdapter(nullptr)
+    ui(new Ui::PlayerForm),
+    m_serviceFactory(nullptr)
 {
     ui->setupUi(this);
 
@@ -101,18 +99,13 @@ void PlayerForm::InitializeWithServices(std::shared_ptr<cga::application::Servic
     m_serviceFactory = serviceFactory;
     
     // 创建 Worker 适配器以保持信号槽兼容
-    m_workerAdapter = new cga::PlayerWorkerAdapter(
         reinterpret_cast<CGA::CGAInterface*>(serviceFactory.get())
     );
     
     // 连接适配器的信号
-    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetPlayerInfo,
             this, &PlayerForm::OnNotifyGetPlayerInfo, Qt::QueuedConnection);
-    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetPetsInfo,
             this, &PlayerForm::OnNotifyGetPetsInfo, Qt::QueuedConnection);
-    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetSkillsInfo,
             this, &PlayerForm::OnNotifyGetSkillsInfo, Qt::QueuedConnection);
-    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetInfoFailed,
             this, &PlayerForm::OnNotifyGetInfoFailed, Qt::QueuedConnection);
     
     LOG_INFO("PlayerForm 已使用新架构初始化");
@@ -129,10 +122,8 @@ void PlayerForm::OnCloseWindow()
 }
 
 // ============================================================================
-// 新架构方法实现
 // ============================================================================
 
-void PlayerForm::UpdatePlayerInfoNew()
 {
     if (!m_serviceFactory) {
         return;
@@ -211,13 +202,11 @@ void PlayerForm::OnSetWorkAcc(int value)
 
 void PlayerForm::OnNotifyGetPetsInfo(QSharedPointer<CGA_PetList_t> pets)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdatePetsInfoNew();
         return;
     }
     
-    // 旧架构处理逻辑
     if(pets->empty())
         return;
 
@@ -307,13 +296,11 @@ void PlayerForm::OnNotifyBattleAction(int flags)
 
 void PlayerForm::OnNotifyGetSkillsInfo(QSharedPointer<CGA_SkillList_t> skills)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
         UpdateSkillsInfoNew();
         return;
     }
     
-    // 旧架构处理逻辑
     if(skills->empty())
         return;
 
@@ -381,13 +368,10 @@ void PlayerForm::OnNotifyGetMapInfo(QString name, int index1, int index2, int in
 
 void PlayerForm::OnNotifyGetPlayerInfo(QSharedPointer<CGA_PlayerInfo_t> player)
 {
-    // 如果使用了新架构，跳过旧架构的处理
     if (m_serviceFactory) {
-        UpdatePlayerInfoNew();
         return;
     }
     
-    // 旧架构处理逻辑
     if(player->level == 0)
         return;
 
