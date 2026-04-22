@@ -4,12 +4,22 @@
 #include <QWidget>
 #include <QThread>
 #include <QStandardItemModel>
+#include <memory>
 #include "player.h"
 #include "battle.h"
 
 #include "qhttpclient.hpp"
 #include "qhttpclientrequest.hpp"
 #include "qhttpclientresponse.hpp"
+
+// 前向声明 - 新架构
+namespace cga {
+    namespace application {
+        class ServiceFactory;
+    }
+    class PlayerWorkerAdapter;
+    class BattleWorkerAdapter;
+}
 
 namespace Ui {
 class PlayerForm;
@@ -22,6 +32,12 @@ class PlayerForm : public QWidget
 public:
     explicit PlayerForm(CPlayerWorker *worker,CBattleWorker *bworker, QWidget *parent = 0);
     ~PlayerForm();
+    
+    /**
+     * @brief 使用新架构初始化
+     * @param serviceFactory 服务工厂
+     */
+    void InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory);
 private:
     void ClearPlayerInfo();
     void ClearMapInfo(bool bIsConnected, bool bIsInGame);
@@ -58,14 +74,26 @@ signals:
     void SaveItemIdMap(QJsonObject &obj);
     void SaveChatSettings(QJsonObject &obj);
     void SaveBattleSettings(QJsonObject &obj);
+    
 private:
     Ui::PlayerForm *ui;
 
+    // 旧架构 (向后兼容)
     CPlayerWorker *m_worker;
+    
+    // 新架构
+    std::shared_ptr<cga::application::ServiceFactory> m_serviceFactory;
+    cga::PlayerWorkerAdapter* m_workerAdapter;
+    
     QStandardItemModel *m_model_Pet;
     QStandardItemModel *m_model_Skill;
     int m_ServerIndex;
     qhttp::client::QHttpClient *m_HttpClient;
+    
+    // 新架构方法
+    void UpdatePlayerInfoNew();
+    void UpdatePetsInfoNew();
+    void UpdateSkillsInfoNew();
 };
 
 #endif // PLAYERFORM_H

@@ -1,5 +1,9 @@
 #include "playerform.h"
 #include "ui_playerform.h"
+#include "worker_adapters.h"
+#include "application/service_factory.h"
+#include "domain/entities.h"
+#include "../CGALib/logger.h"
 #include <QApplication>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -9,7 +13,10 @@
 
 PlayerForm::PlayerForm(CPlayerWorker *worker, CBattleWorker *bworker, QWidget *parent) :
     QWidget(parent),
-    ui(new Ui::PlayerForm), m_worker(worker)
+    ui(new Ui::PlayerForm), 
+    m_worker(worker),
+    m_serviceFactory(nullptr),
+    m_workerAdapter(nullptr)
 {
     ui->setupUi(this);
 
@@ -89,6 +96,28 @@ PlayerForm::PlayerForm(CPlayerWorker *worker, CBattleWorker *bworker, QWidget *p
     ui->comboBox_petMedAt->setCurrentText("0");
 }
 
+void PlayerForm::InitializeWithServices(std::shared_ptr<cga::application::ServiceFactory> serviceFactory)
+{
+    m_serviceFactory = serviceFactory;
+    
+    // 创建 Worker 适配器以保持信号槽兼容
+    m_workerAdapter = new cga::PlayerWorkerAdapter(
+        reinterpret_cast<CGA::CGAInterface*>(serviceFactory.get())
+    );
+    
+    // 连接适配器的信号
+    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetPlayerInfo,
+            this, &PlayerForm::OnNotifyGetPlayerInfo, Qt::QueuedConnection);
+    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetPetsInfo,
+            this, &PlayerForm::OnNotifyGetPetsInfo, Qt::QueuedConnection);
+    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetSkillsInfo,
+            this, &PlayerForm::OnNotifyGetSkillsInfo, Qt::QueuedConnection);
+    connect(m_workerAdapter, &cga::PlayerWorkerAdapter::NotifyGetInfoFailed,
+            this, &PlayerForm::OnNotifyGetInfoFailed, Qt::QueuedConnection);
+    
+    LOG_INFO("PlayerForm 已使用新架构初始化");
+}
+
 PlayerForm::~PlayerForm()
 {
     delete ui;
@@ -97,6 +126,72 @@ PlayerForm::~PlayerForm()
 void PlayerForm::OnCloseWindow()
 {
 
+}
+
+// ============================================================================
+// 新架构方法实现
+// ============================================================================
+
+void PlayerForm::UpdatePlayerInfoNew()
+{
+    if (!m_serviceFactory) {
+        return;
+    }
+    
+    auto player = m_serviceFactory->player().getPlayerInfo();
+    if (player) {
+        // 更新 UI
+        ui->label_name->setText(player->name);
+        ui->label_level->setText(QString("Lv.%1").arg(player->level));
+        ui->label_hp->setText(QString("%1/%2").arg(player->hp).arg(player->maxHp));
+        ui->label_mp->setText(QString("%1/%2").arg(player->mp).arg(player->maxMp));
+        ui->label_xp->setText(QString("%1/%2").arg(player->xp).arg(player->maxXp));
+        ui->label_gold->setText(QString::number(player->gold));
+        
+        LOG_DEBUG("玩家信息更新：{} Lv{} HP:{}/{}", 
+                 player->name.toStdString(), player->level, player->hp, player->maxHp);
+    }
+}
+
+void PlayerForm::UpdatePetsInfoNew()
+{
+    if (!m_serviceFactory) {
+        return;
+    }
+    
+    auto pets = m_serviceFactory->player().getPets();
+    m_model_Pet->clear();
+    
+    for (const auto& pet : pets) {
+        QStandardItem* item = new QStandardItem(
+            QString("%1 (Lv.%2 HP:%3/%4)")
+                .arg(pet.name.isEmpty() ? pet.realName : pet.name)
+                .arg(pet.level)
+                .arg(pet.hp)
+                .arg(pet.maxHp)
+        );
+        m_model_Pet->appendRow(item);
+    }
+}
+
+void PlayerForm::UpdateSkillsInfoNew()
+{
+    if (!m_serviceFactory) {
+        return;
+    }
+    
+    auto skills = m_serviceFactory->player().getSkills();
+    m_model_Skill->clear();
+    
+    for (const auto& skill : skills) {
+        QStandardItem* item = new QStandardItem(
+            QString("%1 (Lv.%2/%3)")
+                .arg(skill.name)
+                .arg(skill.level)
+                .arg(skill.maxLevel)
+        );
+        m_model_Skill->appendRow(item);
+    }
 }
 
 void PlayerForm::OnSetMoveSpeed(int value)
