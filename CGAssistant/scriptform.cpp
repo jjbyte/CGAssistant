@@ -1,4 +1,5 @@
 #include "scriptform.h"
+#include "../CGALib/logger.h"
 #include "ui_scriptform.h"
 #include <QFileDialog>
 #include <QMessageBox>
@@ -94,6 +95,9 @@ void ScriptForm::dropEvent(QDropEvent *event)
 
 void ScriptForm::OnNodeStarted()
 {
+    LOG_INFO("Node.js 脚本引擎已启动 - PID: {} 模式：{}", 
+             m_node->processId(), m_bDebugging ? "调试" : "运行");
+    
     if(m_bDebugging){
         ui->label_status->setText(tr("Debugging with pid %1...").arg(m_node->processId()));
     } else {
@@ -104,6 +108,8 @@ void ScriptForm::OnNodeStarted()
 
 void ScriptForm::OnNodeStartError(QProcess::ProcessError error)
 {
+    LOG_ERROR("Node.js 脚本启动失败 - {}", m_node->errorString().toStdString());
+    
     ui->label_status->setText(tr("Failed to start node, error: %1").arg(m_node->errorString()));
     ui->pushButton_run->setEnabled(true);
     ui->pushButton_debug->setEnabled(true);
@@ -353,12 +359,14 @@ void ScriptForm::on_pushButton_load_clicked()
         if(file.exists())
         {
             m_scriptPath = filePath;
+            LOG_INFO("脚本文件已加载 - 路径：{}", filePath.toStdString());
             ui->label_status->setText(tr("Ready to launch"));
             ui->pushButton_run->setEnabled(true);
             ui->pushButton_debug->setEnabled(true);
             ui->pushButton_term->setEnabled(false);
             ui->lineEdit_scriptPath->setText(filePath);
         } else {
+            LOG_ERROR("脚本文件加载失败 - {}", file.errorString().toStdString());
             QMessageBox::critical(this, tr("Error"), tr("Failed to load script file.\nerror: %1").arg(file.errorString()), QMessageBox::Ok, 0);
         }
     }
@@ -368,6 +376,8 @@ void ScriptForm::on_pushButton_run_clicked()
 {
     int ingame = 0;
     if(m_port && ui->pushButton_run->isEnabled() && m_node->state() != QProcess::Running && g_CGAInterface->IsInGame(ingame) && ingame){
+        LOG_INFO("启动脚本 - 文件：{} 端口：{}", m_scriptPath.toStdString(), m_port);
+        
         ui->pushButton_run->setEnabled(false);
         ui->pushButton_debug->setEnabled(false);
         ui->pushButton_term->setEnabled(false);

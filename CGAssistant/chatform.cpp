@@ -1,4 +1,5 @@
 #include "chatform.h"
+#include "../CGALib/logger.h"
 #include "ui_chatform.h"
 
 #include <QTimer>
@@ -49,6 +50,7 @@ void ChatForm::on_lineEdit_returnPressed()
     auto saystring = ui->lineEdit->text().toStdString();
     int ingame = 0;
     if(g_CGAInterface->IsInGame(ingame) && ingame){
+        LOG_INFO("发送聊天消息：{}", saystring);
         g_CGAInterface->SayWords(saystring, 0, 3, 1);
     }
 
@@ -58,6 +60,8 @@ void ChatForm::on_lineEdit_returnPressed()
 void ChatForm::OnNotifyGetPlayerInfo(QSharedPointer<CGA_PlayerInfo_t> player)
 {
     m_player = player;
+    LOG_TRACE("聊天模块玩家信息更新 - 名称：{} 单位 ID:{}", 
+             player->name.toStdString(), player->unitid);
 }
 
 void ChatForm::OnNotifyFillChatSettings(int blockchatmsgs)
@@ -91,7 +95,7 @@ void ChatForm::OnNotifyChatMsg(int unitid, QString msg, int size, int color)
         if(unitid > 0){
             if(m_player->unitid == unitid)
             {
-                type = 1;
+                type = 1;  // 自己
                 name = m_player->name;
             }
             else
@@ -101,7 +105,7 @@ void ChatForm::OnNotifyChatMsg(int unitid, QString msg, int size, int color)
                 {
                     for(const auto &u :units){
                         if(u.valid == 2 && ((u.flags & 256) || (u.flags & 4096)) && u.unit_id == unitid){
-                            type = (u.flags & 256) ? 2 : 3;
+                            type = (u.flags & 256) ? 2 : 3;  // 2=玩家 3=宠物
                             name = QString::fromStdString(u.unit_name);
                             break;
                         }
@@ -109,11 +113,14 @@ void ChatForm::OnNotifyChatMsg(int unitid, QString msg, int size, int color)
                 }
             }
         } else {
-            type = 0;
+            type = 0;  // 系统消息
         }
 
         if(type == -1)
             return;
+        
+        LOG_DEBUG("收到聊天消息 - 类型：{} 发送者：{} 内容：{}", 
+                 type, name.toStdString(), msg.toStdString());
 
         if(type >= 1 && type <= 3)
         {

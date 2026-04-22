@@ -1,4 +1,5 @@
 #include "mapform.h"
+#include "../CGALib/logger.h"
 #include "ui_mapform.h"
 
 #include <QJsonDocument>
@@ -94,6 +95,7 @@ void MapForm::OnNotifyGetMapCellInfo(QSharedPointer<CGA_MapCellData_t> coll, QSh
 
     if(coll && coll->xsize && coll->ysize)
     {
+        LOG_DEBUG("地图碰撞数据更新 - 尺寸：{}x{} 索引：{}", coll->xsize, coll->ysize, coll->mapindex);
         m_collision = coll;
         ui->widget_paintmap->LoadMapCellInfo(coll, obj, units);
     }
@@ -103,6 +105,9 @@ void MapForm::OnNotifyGetMapInfo(QString name, int index1, int index2, int index
 {
     ui->widget_paintmap->m_bShowCrosshair = ui->checkBox_showcrosshair->isChecked();
 
+    LOG_TRACE("地图信息更新 - 名称：{} 坐标：({}, {}) 索引：{} 世界状态：{}", 
+             name.toStdString().c_str(), x, y, index3, worldstatus);
+    
     ui->widget_paintmap->LoadMapInfo(name, x, y, index3, worldstatus, gamestatus);
     ui->label_mapname->setText(name);
     ui->label_xy->setText(tr("player at (%1, %2)").arg(x).arg(y));
@@ -111,8 +116,10 @@ void MapForm::OnNotifyGetMapInfo(QString name, int index1, int index2, int index
 
 void MapForm::OnNotifyRefreshMapRegion(int xbase, int ybase, int xtop, int ytop, int index3)
 {
-    if(m_collision && index3 == m_collision->mapindex)
+    if(m_collision && index3 == m_collision->mapindex) {
+        LOG_TRACE("刷新地图区域 - 起点：({}, {}) 终点：({}, {})", xbase, ybase, xtop, ytop);
         ui->widget_paintmap->RepaintCollisionPixels(xbase, ybase, xtop, ytop);
+    }
 }
 
 void MapForm::OnCloseWindow()

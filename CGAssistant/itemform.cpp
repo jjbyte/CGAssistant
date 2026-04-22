@@ -1,4 +1,5 @@
 #include "itemform.h"
+#include "../CGALib/logger.h"
 #include "ui_itemform.h"
 #include <QMessageBox>
 #include <QFileDialog>
@@ -88,6 +89,8 @@ bool ItemForm::GetItemTips(int itemid, QString &str)
 
 void ItemForm::OnNotifyGetItemsInfo(QSharedPointer<CGA_ItemList_t> items)
 {
+    LOG_TRACE("物品信息更新 - 物品数量：{}", items->size());
+    
     int row, col;
     for(int i = 0;i < 40; ++i)
     {
@@ -122,6 +125,9 @@ void ItemForm::OnNotifyGetItemsInfo(QSharedPointer<CGA_ItemList_t> items)
             qItem->setData(QVariant(item.pos), Qt::UserRole + 10084);
             qItem->setData(QVariant(item.itemid), Qt::UserRole + 10085);
             qItem->setData(QVariant(item.name), Qt::UserRole + 10086);
+            
+            LOG_DEBUG("物品更新 - 位置：{} 名称：{} 数量：{} ID:{}", 
+                     item.pos, item.name.c_str(), item.count, item.itemid);
         }
     }
 }
@@ -324,19 +330,26 @@ void ItemForm::on_tableView_customContextMenuRequested(const QPoint &pos)
 void ItemForm::OnDropItemAction()
 {
     auto pAction = qobject_cast<QAction*>(sender());
-    QueueDropItem(pAction->property("itempos").toInt(), pAction->property("itemid").toInt());
+    int itempos = pAction->property("itempos").toInt();
+    int itemid = pAction->property("itemid").toInt();
+    LOG_INFO("手动丢弃物品 - 位置：{} ID:{}", itempos, itemid);
+    QueueDropItem(itempos, itemid);
 }
 
 void ItemForm::OnAddAutoDropAction()
 {
     auto pAction = qobject_cast<QAction*>(sender());
-    AddItemDropper(QString("#%1").arg(pAction->property("itemid").toInt()));
+    int itemid = pAction->property("itemid").toInt();
+    LOG_INFO("添加自动丢弃规则 - ID:{}", itemid);
+    AddItemDropper(QString("#%1").arg(itemid));
 }
 
 void ItemForm::OnAddAutoTweakAction()
 {
     auto pAction = qobject_cast<QAction*>(sender());
-    ui->lineEdit_tweak->setText(QString("%1|").arg(pAction->property("itemname").toString()));
+    QString itemname = pAction->property("itemname").toString();
+    LOG_INFO("添加自动整理规则 - 名称：{}", itemname);
+    ui->lineEdit_tweak->setText(QString("%1|").arg(itemname));
 }
 
 bool ItemForm::ParseItemIdMap(const QJsonValue &val)
